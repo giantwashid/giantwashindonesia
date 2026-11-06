@@ -7,9 +7,10 @@ const rupiah = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const COLS = {
-  attendance: [['date', 'Tanggal'], ['employee', 'Karyawan'], ['check_in', 'Masuk'], ['check_out', 'Pulang'], ['status', 'Status'], ['note', 'Catatan']],
-  sales: [['date', 'Tanggal'], ['invoice_no', 'No. Nota'], ['customer', 'Pelanggan'], ['item', 'Layanan/Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['note', 'Catatan']],
+  attendance: [['date', 'Tanggal'], ['employee', 'Karyawan'], ['check_in', 'Masuk'], ['check_out', 'Pulang'], ['status', 'Status'], ['photo_in', 'Foto masuk'], ['loc_in', 'Lokasi masuk'], ['photo_out', 'Foto pulang'], ['loc_out', 'Lokasi pulang'], ['note', 'Catatan']],
+  sales: [['date', 'Tanggal'], ['invoice_no', 'No. Nota'], ['customer', 'Pelanggan'], ['item', 'Layanan/Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['payment_method', 'Bayar'], ['cashier', 'Kasir'], ['note', 'Catatan']],
   purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['note', 'Catatan']],
+  products: [['sort', 'Urutan'], ['name', 'Nama'], ['price', 'Harga'], ['unit', 'Satuan']],
   employees: [['name', 'Nama'], ['position', 'Jabatan'], ['email', 'Email login']],
   contacts: [['created_at', 'Waktu'], ['name', 'Nama'], ['email', 'Email'], ['phone', 'HP'], ['message', 'Pesan']],
 };
@@ -82,12 +83,26 @@ async function load() {
   const [from, to] = monthRange();
   if (['attendance', 'sales', 'purchases'].includes(current)) q = q.gte('date', from).lt('date', to).order('date', { ascending: false });
   else if (current === 'contacts') q = q.gte('created_at', from).lt('created_at', to).order('created_at', { ascending: false });
+  else if (current === 'products') q = q.order('sort').order('name');
   else q = q.order('name');
   const { data, error } = await q;
   if (error) { status.textContent = 'Gagal memuat: ' + error.message; return; }
   status.textContent = '';
   const empName = Object.fromEntries(employees.map((e) => [e.id, e.name]));
-  lastRows = (data || []).map((r) => ({ ...r, employee: empName[r.employee_id] || '' }));
+  lastRows = (data || []).map((r) => ({
+    ...r,
+    employee: empName[r.employee_id] || '',
+    loc_in: r.lat_in != null ? `${r.lat_in},${r.lng_in}` : '',
+    loc_out: r.lat_out != null ? `${r.lat_out},${r.lng_out}` : '',
+  }));
+  if (current === 'attendance') {
+    const paths = lastRows.flatMap((r) => [r.photo_in, r.photo_out]).filter(Boolean);
+    if (paths.length) {
+      const { data: urls } = await sb.storage.from('absen-foto').createSignedUrls(paths, 3600);
+      const map = Object.fromEntries((urls || []).map((u) => [u.path, u.signedUrl]));
+      lastRows.forEach((r) => { r.photo_in_url = map[r.photo_in]; r.photo_out_url = map[r.photo_out]; });
+    }
+  }
   render();
 }
 
@@ -98,6 +113,11 @@ function render() {
     let v = r[k];
     if (k === 'created_at') v = new Date(v).toLocaleString('id-ID');
     if (MONEY.includes(k)) return `<td class="num">${rupiah(v)}</td>`;
+    if (k === 'photo_in' || k === 'photo_out') {
+      const url = r[k + '_url'];
+      return url ? `<td><a href="${esc(url)}" target="_blank" rel="noopener"><img class="thumb" src="${esc(url)}" alt="Foto"></a></td>` : '<td>-</td>';
+    }
+    if ((k === 'loc_in' || k === 'loc_out') && v) return `<td><a href="https://www.google.com/maps?q=${esc(v)}" target="_blank" rel="noopener">Lihat peta</a></td>`;
     return `<td>${esc(v)}</td>`;
   }).join('') + `<td><button class="del" title="Hapus" data-id="${r.id}">✕</button></td></tr>`).join('');
   $('#tbl-' + current).innerHTML = head + (body || `<tr><td colspan="${cols.length + 1}">Belum ada data di bulan ini.</td></tr>`);
