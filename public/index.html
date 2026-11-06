@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nama Perusahaan – Company Profile</title>
+  <meta name="description" content="Profil perusahaan Nama Perusahaan: layanan, tentang kami, dan kontak.">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-inner">
+      <a href="#" class="logo">Nama<span>Perusahaan</span></a>
+      <button class="menu-btn" aria-label="Menu" onclick="document.body.classList.toggle('menu-open')">☰</button>
+      <nav class="links">
+        <a href="#tentang">Tentang</a>
+        <a href="#layanan">Layanan</a>
+        <a href="#keunggulan">Keunggulan</a>
+        <a href="#kontak">Kontak</a>
+        <a href="/admin/" class="btn-sm">Login Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <h1>Solusi terpercaya untuk bisnis Anda</h1>
+      <p>Tagline singkat perusahaan Anda di sini. Jelaskan dalam satu kalimat apa yang perusahaan Anda lakukan dan untuk siapa.</p>
+      <a href="#kontak" class="btn">Hubungi Kami</a>
+    </div>
+  </section>
+
+  <section id="tentang" class="section">
+    <div class="container grid-2">
+      <div>
+        <h2>Tentang Kami</h2>
+        <p>Didirikan pada tahun 20XX, Nama Perusahaan bergerak di bidang ... . Ganti paragraf ini dengan sejarah singkat, visi, dan misi perusahaan.</p>
+        <p><strong>Visi:</strong> Menjadi ...<br><strong>Misi:</strong> Memberikan ...</p>
+      </div>
+      <div class="stats">
+        <div><b>10+</b><span>Tahun pengalaman</span></div>
+        <div><b>500+</b><span>Pelanggan</span></div>
+        <div><b>25</b><span>Karyawan</span></div>
+        <div><b>3</b><span>Cabang</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="layanan" class="section alt">
+    <div class="container">
+      <h2>Layanan Kami</h2>
+      <div class="cards">
+        <article class="card"><h3>Layanan 1</h3><p>Deskripsi singkat layanan atau produk pertama.</p></article>
+        <article class="card"><h3>Layanan 2</h3><p>Deskripsi singkat layanan atau produk kedua.</p></article>
+        <article class="card"><h3>Layanan 3</h3><p>Deskripsi singkat layanan atau produk ketiga.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="keunggulan" class="section">
+    <div class="container">
+      <h2>Kenapa Memilih Kami</h2>
+      <ul class="checks">
+        <li>Tim berpengalaman dan profesional</li>
+        <li>Harga kompetitif dan transparan</li>
+        <li>Layanan cepat dan responsif</li>
+        <li>Bergaransi dan terpercaya</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="kontak" class="section alt">
+    <div class="container grid-2">
+      <div>
+        <h2>Kontak</h2>
+        <p>📍 Alamat lengkap perusahaan, Kota</p>
+        <p>📞 0812-0000-0000</p>
+        <p>✉️ info@namaperusahaan.com</p>
+        <p>🕘 Senin–Jumat, 08.00–17.00</p>
+      </div>
+      <form id="contact-form" class="form">
+        <input name="name" placeholder="Nama" required>
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="phone" placeholder="No. HP (opsional)">
+        <textarea name="message" rows="4" placeholder="Pesan" required></textarea>
+        <button class="btn" type="submit">Kirim Pesan</button>
+        <p id="form-status" class="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">© <span id="year"></span> Nama Perusahaan. Semua hak dilindungi.</div>
+  </footer>
+
+  <script src="/script.js"></script>
+</body>
+</html>
