@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#ffd23f">
+<title>Absensi Karyawan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&display=swap">
+<link rel="stylesheet" href="/absen/absen.css">
+</head>
+<body>
+<main class="wrap">
+
+  <!-- LOGIN -->
+  <section id="login-view" class="hidden">
+    <h1 class="hello">Absensi Karyawan</h1>
+    <form id="login-form" class="card stack">
+      <label>Email<input name="email" type="email" required autocomplete="username"></label>
+      <label>Password<input name="password" type="password" required autocomplete="current-password"></label>
+      <button class="btn" type="submit">MASUK</button>
+      <p id="login-msg" class="msg"></p>
+    </form>
+  </section>
+
+  <!-- ABSEN -->
+  <section id="app-view" class="hidden">
+    <div class="top">
+      <span class="hello">Halo, <span id="emp-name">...</span>!</span>
+      <button id="logout" class="pill" type="button">Keluar</button>
+    </div>
+
+    <div class="card clock">
+      <span id="date" class="label"></span>
+      <span id="time" class="big"></span>
+    </div>
+
+    <div class="grid2">
+      <div class="card mini"><span class="label">MASUK</span><span id="in" class="mid">--:--</span></div>
+      <div class="card mini"><span class="label">PULANG</span><span id="out" class="mid">--:--</span></div>
+    </div>
+
+    <button id="action" class="btn big-btn" type="button" disabled>MEMUAT...</button>
+    <p id="msg" class="msg"></p>
+
+    <div class="card history">
+      <span class="h">RIWAYAT</span>
+      <div id="history"></div>
+    </div>
+  </section>
+
+  <!-- NOT LINKED -->
+  <section id="nolink-view" class="hidden">
+    <div class="card stack">
+      <h1 class="hello">Akun belum terdaftar</h1>
+      <p>Email <b id="nolink-email"></b> belum ada di data karyawan. Minta pemilik toko menambahkan email ini di Panel Laporan, menu Karyawan.</p>
+      <button id="logout2" class="btn" type="button">KELUAR</button>
+    </div>
+  </section>
+
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/absen/absen.js"></script>
+</body>
+</html>
