@@ -10,7 +10,7 @@ const COLS = {
   attendance: [['date', 'Tanggal'], ['employee', 'Karyawan'], ['check_in', 'Masuk'], ['check_out', 'Pulang'], ['status', 'Status'], ['note', 'Catatan']],
   sales: [['date', 'Tanggal'], ['invoice_no', 'No. Nota'], ['customer', 'Pelanggan'], ['item', 'Layanan/Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['note', 'Catatan']],
   purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['note', 'Catatan']],
-  employees: [['name', 'Nama'], ['position', 'Jabatan']],
+  employees: [['name', 'Nama'], ['position', 'Jabatan'], ['email', 'Email login']],
   contacts: [['created_at', 'Waktu'], ['name', 'Nama'], ['email', 'Email'], ['phone', 'HP'], ['message', 'Pesan']],
 };
 const MONEY = ['price', 'total'];
@@ -107,7 +107,7 @@ function render() {
   if (current === 'attendance') {
     const c = {};
     lastRows.forEach((r) => (c[r.status] = (c[r.status] || 0) + 1));
-    sum.innerHTML = ['hadir', 'izin', 'sakit', 'alpha', 'cuti'].map((s) => `<div>${s}: <b>${c[s] || 0}</b></div>`).join('');
+    sum.innerHTML = ['hadir', 'telat', 'izin', 'sakit', 'alpha', 'cuti'].map((s) => `<div>${s}: <b>${c[s] || 0}</b></div>`).join('');
   } else {
     const total = lastRows.reduce((a, r) => a + Number(r.total || 0), 0);
     sum.innerHTML = `<div>Jumlah transaksi: <b>${lastRows.length}</b></div><div>Total bulan ini: <b>${rupiah(total)}</b></div>`;
