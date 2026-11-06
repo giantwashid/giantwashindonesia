@@ -1,8 +1,113 @@
 <!doctype html>
-<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin – Segera Hadir</title><link rel="stylesheet" href="/styles.css"></head>
-<body><section class="section"><div class="container">
-<h2>Panel Admin</h2>
-<p>Halaman laporan Absensi, Penjualan, dan Pembelian sedang disiapkan.</p>
-<a class="btn" href="/">Kembali ke beranda</a>
-</div></section></body></html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Laporan</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+<header class="nav">
+  <div class="container nav-inner">
+    <a href="/" class="logo">Panel<span>Laporan</span></a>
+    <div id="userbox" class="userbox hidden">
+      <span id="user-email"></span>
+      <button id="logout" class="btn-sm">Keluar</button>
+    </div>
+  </div>
+</header>
+
+<section id="login-view" class="section">
+  <div class="container narrow">
+    <h2>Login Karyawan</h2>
+    <form id="login-form" class="form">
+      <input name="email" type="email" placeholder="Email" required autocomplete="username">
+      <input name="password" type="password" placeholder="Password" required autocomplete="current-password">
+      <button class="btn" type="submit">Masuk</button>
+      <p id="login-status" class="status"></p>
+    </form>
+  </div>
+</section>
+
+<section id="app-view" class="section hidden">
+  <div class="container">
+    <nav class="tabs" id="tabs">
+      <button data-tab="attendance" class="active">Absensi</button>
+      <button data-tab="sales">Penjualan</button>
+      <button data-tab="purchases">Pembelian</button>
+      <button data-tab="employees">Karyawan</button>
+      <button data-tab="contacts">Pesan Masuk</button>
+    </nav>
+
+    <div class="filter">
+      <label>Bulan <input type="month" id="month"></label>
+      <button id="export" class="btn-sm">Export Excel (CSV)</button>
+    </div>
+
+    <div class="panel" data-panel="attendance">
+      <form class="form grid-form" data-table="attendance">
+        <select name="employee_id" required class="emp-select"><option value="">Pilih karyawan</option></select>
+        <input name="date" type="date" required>
+        <input name="check_in" type="time" title="Jam masuk">
+        <input name="check_out" type="time" title="Jam pulang">
+        <select name="status"><option>hadir</option><option>izin</option><option>sakit</option><option>alpha</option><option>cuti</option></select>
+        <input name="note" placeholder="Catatan">
+        <button class="btn" type="submit">Simpan</button>
+      </form>
+      <div class="summary" id="sum-attendance"></div>
+      <div class="table-wrap"><table id="tbl-attendance"></table></div>
+    </div>
+
+    <div class="panel hidden" data-panel="sales">
+      <form class="form grid-form" data-table="sales">
+        <input name="date" type="date" required>
+        <input name="invoice_no" placeholder="No. Nota">
+        <input name="customer" placeholder="Pelanggan">
+        <input name="item" placeholder="Layanan / Barang" required>
+        <input name="qty" type="number" step="any" placeholder="Qty (kg/pcs)" required>
+        <input name="price" type="number" step="any" placeholder="Harga satuan" required>
+        <input name="note" placeholder="Catatan">
+        <button class="btn" type="submit">Simpan</button>
+      </form>
+      <div class="summary" id="sum-sales"></div>
+      <div class="table-wrap"><table id="tbl-sales"></table></div>
+    </div>
+
+    <div class="panel hidden" data-panel="purchases">
+      <form class="form grid-form" data-table="purchases">
+        <input name="date" type="date" required>
+        <input name="po_no" placeholder="No. PO / Nota">
+        <input name="supplier" placeholder="Supplier">
+        <input name="item" placeholder="Barang" required>
+        <input name="qty" type="number" step="any" placeholder="Qty" required>
+        <input name="price" type="number" step="any" placeholder="Harga satuan" required>
+        <input name="note" placeholder="Catatan">
+        <button class="btn" type="submit">Simpan</button>
+      </form>
+      <div class="summary" id="sum-purchases"></div>
+      <div class="table-wrap"><table id="tbl-purchases"></table></div>
+    </div>
+
+    <div class="panel hidden" data-panel="employees">
+      <form class="form grid-form" data-table="employees">
+        <input name="name" placeholder="Nama karyawan" required>
+        <input name="position" placeholder="Jabatan">
+        <button class="btn" type="submit">Tambah</button>
+      </form>
+      <div class="table-wrap"><table id="tbl-employees"></table></div>
+    </div>
+
+    <div class="panel hidden" data-panel="contacts">
+      <div class="table-wrap"><table id="tbl-contacts"></table></div>
+    </div>
+
+    <p id="app-status" class="status"></p>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/admin/admin.js"></script>
+</body>
+</html>
