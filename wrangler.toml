@@ -1,0 +1,8 @@
+name = "company-website"
+compatibility_date = "2026-10-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "company-db"
+database_id = "f15079e6-14c5-4c99-8cc0-b29163ec9c91"
