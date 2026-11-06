@@ -44,6 +44,19 @@
     <button id="action" class="btn big-btn" type="button" disabled>MEMUAT...</button>
     <p id="msg" class="msg"></p>
 
+    <div id="cam" class="card cam hidden">
+      <span class="h" id="cam-title">FOTO SELFIE</span>
+      <div class="frame">
+        <video id="video" autoplay playsinline muted></video>
+        <img id="preview" class="hidden" alt="Foto selfie">
+      </div>
+      <p id="loc" class="loc">Mencari lokasi...</p>
+      <div class="grid2">
+        <button id="cam-cancel" class="btn pulang" type="button">BATAL</button>
+        <button id="cam-shot" class="btn" type="button">AMBIL FOTO</button>
+      </div>
+    </div>
+
     <div class="card history">
       <span class="h">RIWAYAT</span>
       <div id="history"></div>
