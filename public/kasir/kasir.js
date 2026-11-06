@@ -77,6 +77,9 @@ async function loadToday() {
 
 // ---------- Keranjang ----------
 const stepOf = (p) => (p.unit === 'kg' ? 0.5 : 1);
+// Harga malam berlaku jam 23:00 - 05:59
+const isNight = () => { const h = new Date().getHours(); return h >= 23 || h < 6; };
+const priceOf = (p) => Number(isNight() && p.price_night != null ? p.price_night : p.price);
 function add(p, dir) {
   const q = Math.max(0, Math.round(((cart[p.id] || 0) + dir * stepOf(p)) * 10) / 10);
   if (q) cart[p.id] = q; else delete cart[p.id];
@@ -85,7 +88,7 @@ function add(p, dir) {
 const fmtQty = (q) => String(q).replace('.', ',');
 
 function total() {
-  return products.reduce((a, p) => a + (cart[p.id] || 0) * Number(p.price), 0);
+  return products.reduce((a, p) => a + (cart[p.id] || 0) * priceOf(p), 0);
 }
 
 function render() {
@@ -95,7 +98,8 @@ function render() {
     const q = cart[p.id] || 0;
     const b = el('button', 'tile' + (q ? ' on' : ''));
     b.type = 'button';
-    b.append(el('b', null, p.name), el('span', null, `${rp(p.price)}${p.unit === 'kg' ? '/kg' : ''}`));
+    b.append(el('b', null, p.name), el('span', null, `${rp(priceOf(p))}${p.unit === 'kg' ? '/kg' : ''}`));
+    if (p.note) b.append(el('small', 'note', p.note));
     if (q) b.append(el('span', 'badge', fmtQty(q)));
     b.addEventListener('click', () => add(p, 1));
     grid.append(b);
@@ -109,7 +113,7 @@ function render() {
   chosen.forEach((p) => {
     const row = el('div', 'line');
     const nm = el('div', 'nm');
-    nm.append(el('b', null, p.name), el('span', null, rp(cart[p.id] * p.price)));
+    nm.append(el('b', null, p.name), el('span', null, rp(cart[p.id] * priceOf(p))));
     const st = el('div', 'step');
     const minus = el('button', null, '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'Kurangi ' + p.name);
     const plus = el('button', 'plus', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'Tambah ' + p.name);
@@ -156,7 +160,7 @@ $('pay-btn').addEventListener('click', async () => {
   const customer = $('customer').value.trim() || null;
   const chosen = products.filter((p) => cart[p.id]);
   const rows = chosen.map((p) => ({
-    date: today(), invoice_no: no, customer, item: p.name, qty: cart[p.id], price: p.price,
+    date: today(), invoice_no: no, customer, item: p.name, qty: cart[p.id], price: priceOf(p),
     outlet_id: outlet ? outlet.id : null, payment_method: pay, cashier: employee.name,
   }));
   const { error } = await sb.from('sales').insert(rows);
@@ -169,7 +173,7 @@ $('pay-btn').addEventListener('click', async () => {
   const ri = $('r-items');
   ri.replaceChildren(...chosen.map((p) => {
     const r = el('div', 'rrow');
-    r.append(el('span', null, `${p.name} × ${fmtQty(cart[p.id])}${p.unit === 'kg' ? ' kg' : ''}`), el('b', null, rp(cart[p.id] * p.price)));
+    r.append(el('span', null, `${p.name} × ${fmtQty(cart[p.id])}${p.unit === 'kg' ? ' kg' : ''}`), el('b', null, rp(cart[p.id] * priceOf(p))));
     return r;
   }));
   $('r-total').textContent = rp(t);

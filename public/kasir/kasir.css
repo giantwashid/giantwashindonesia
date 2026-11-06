@@ -32,3 +32,5 @@
 .rrow { display: flex; justify-content: space-between; font-size: 15px; gap: 8px; }
 .rrow.big b { font-size: 28px; font-weight: 900; }
 .rrow.big span { font-weight: 800; align-self: center; }
+
+.tile .note{display:block;font-size:11px;color:#c2410c;margin-top:2px}
