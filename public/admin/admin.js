@@ -10,11 +10,11 @@ const COLS = {
   attendance: [['date', 'Tanggal'], ['employee', 'Karyawan'], ['check_in', 'Masuk'], ['check_out', 'Pulang'], ['status', 'Status'], ['photo_in', 'Foto masuk'], ['loc_in', 'Lokasi masuk'], ['photo_out', 'Foto pulang'], ['loc_out', 'Lokasi pulang'], ['note', 'Catatan']],
   sales: [['date', 'Tanggal'], ['invoice_no', 'No. Nota'], ['customer', 'Pelanggan'], ['item', 'Layanan/Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['payment_method', 'Bayar'], ['cashier', 'Kasir'], ['note', 'Catatan']],
   purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['note', 'Catatan']],
-  products: [['sort', 'Urutan'], ['name', 'Nama'], ['price', 'Harga'], ['unit', 'Satuan']],
+  products: [['sort', 'Urutan'], ['name', 'Nama'], ['price', 'Harga 06:00-22:59'], ['price_night', 'Harga 23:00-05:59'], ['unit', 'Satuan'], ['note', 'Catatan']],
   employees: [['name', 'Nama'], ['position', 'Jabatan'], ['email', 'Email login']],
   contacts: [['created_at', 'Waktu'], ['name', 'Nama'], ['email', 'Email'], ['phone', 'HP'], ['message', 'Pesan']],
 };
-const MONEY = ['price', 'total'];
+const MONEY = ['price', 'price_night', 'total'];
 let current = 'attendance';
 let employees = [];
 let lastRows = [];

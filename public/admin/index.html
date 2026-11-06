@@ -95,9 +95,11 @@
       <p>Daftar harga yang muncul di halaman kasir <a href="/kasir/">/kasir/</a>. Untuk ubah harga: hapus baris lama, lalu tambah lagi.</p>
       <form class="form grid-form" data-table="products">
         <input name="name" placeholder="Nama layanan / barang" required>
-        <input name="price" type="number" step="any" placeholder="Harga" required>
+        <input name="price" type="number" step="any" placeholder="Harga siang (06:00-22:59)" required>
+        <input name="price_night" type="number" step="any" placeholder="Harga malam (23:00-05:59)">
         <select name="unit"><option value="pcs">per pcs</option><option value="putaran">per putaran</option><option value="paket">per paket</option><option value="sachet">per sachet</option><option value="kg">per kg</option></select>
         <input name="sort" type="number" placeholder="Urutan (1, 2, 3...)">
+        <input name="note" placeholder="Catatan (mis. Free cuci 2x)">
         <button class="btn" type="submit">Tambah</button>
       </form>
       <div class="table-wrap"><table id="tbl-products"></table></div>
