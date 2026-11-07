@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#ffd23f">
+<title>Pembelian</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&display=swap">
+<link rel="stylesheet" href="/absen/absen.css">
+<link rel="stylesheet" href="/karyawan/karyawan.css">
+</head>
+<body>
+<main class="wrap">
+  <section id="app-view">
+    <div class="top">
+      <span class="hello">Pembelian</span>
+      <a class="pill" href="/karyawan/">← Menu</a>
+    </div>
+    <form id="form" class="card stack">
+      <label>Outlet<select id="outlet" name="outlet_id"></select></label>
+      <label>Tanggal<input name="date" id="date" type="date" required></label>
+      <label>Barang yang dibeli<input name="item" required placeholder="mis. Deterjen 5 liter"></label>
+      <div class="grid2">
+        <label>Jumlah<input name="qty" type="number" step="any" min="0" inputmode="decimal" required></label>
+        <label>Harga satuan<input name="price" type="number" step="any" min="0" inputmode="numeric" required></label>
+      </div>
+      <p class="total">Total: <span id="total">Rp0</span></p>
+      <label>Toko / supplier<input name="supplier" placeholder="mis. Toko Makmur"></label>
+      <label>No. nota (kalau ada)<input name="po_no"></label>
+      <label>Catatan<input name="note"></label>
+      <button class="btn big-btn" id="save" type="submit">SIMPAN</button>
+      <p id="msg" class="msg"></p>
+    </form>
+    <div class="card history">
+      <span class="h">PEMBELIAN TERAKHIR DI OUTLET INI</span>
+      <div id="list"></div>
+    </div>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/karyawan/common.js"></script>
+<script src="/pembelian/pembelian.js"></script>
+</body>
+</html>
