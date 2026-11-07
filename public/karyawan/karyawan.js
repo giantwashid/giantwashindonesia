@@ -7,8 +7,15 @@ $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = new FormData(e.target);
   $('login-msg').textContent = 'Memeriksa...';
-  const { error } = await sb.auth.signInWithPassword({ email: f.get('email'), password: f.get('password') });
-  $('login-msg').textContent = error ? 'Email atau password salah.' : '';
+  const id = String(f.get('email')).trim();
+  let email = id;
+  if (!id.includes('@')) {
+    const { data } = await sb.rpc('login_email', { u: id });
+    if (!data) { $('login-msg').textContent = 'Username tidak ditemukan.'; return; }
+    email = data;
+  }
+  const { error } = await sb.auth.signInWithPassword({ email, password: f.get('password') });
+  $('login-msg').textContent = error ? 'Username/email atau password salah.' : '';
 });
 $('logout').addEventListener('click', () => sb.auth.signOut());
 $('logout2').addEventListener('click', () => sb.auth.signOut());
