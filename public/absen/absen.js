@@ -2,6 +2,9 @@
 const SUPABASE_URL = 'https://oaxrqjbqtiibiqhsnvlt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_OXzFWfF0lhf866nnu_9Z-Q_-WfZzDG8';
 const JAM_MASUK = '08:00'; // lewat jam ini dianggap telat
+// Aturan KPI: denda per telat, dan uang kerajinan hangus kalau telat lebih dari BATAS_TELAT kali dalam sebulan.
+const DENDA_TELAT = 10000;
+const BATAS_TELAT = 3;
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = (id) => document.getElementById(id);
@@ -64,6 +67,8 @@ async function refresh() {
   else if (!todayRow.check_in) { btn.textContent = `SUDAH TERCATAT: ${todayRow.status.toUpperCase()}`; btn.disabled = true; }
   else if (!todayRow.check_out) { btn.textContent = 'ABSEN PULANG'; btn.disabled = false; btn.classList.add('pulang'); }
   else { btn.textContent = 'SELESAI HARI INI'; btn.disabled = true; }
+
+  loadPay();
 
   const hist = $('history');
   hist.replaceChildren();
@@ -184,4 +189,35 @@ async function submit() {
   closeCam();
   $('msg').textContent = todayRow ? `Pulang tercatat ${t}. Hati-hati di jalan!` : `Masuk tercatat ${t}. Semangat!`;
   refresh();
+}
+
+// ---------- Perkiraan gaji bulan ini ----------
+const rp = (n) => 'Rp' + Math.round(Number(n) || 0).toLocaleString('id-ID');
+async function loadPay() {
+  const d = new Date();
+  const from = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+  const { data } = await sb.from('attendance').select('status').eq('employee_id', employee.id).gte('date', from).lte('date', today());
+  const rows = data || [];
+  const late = rows.filter((r) => r.status === 'telat').length;
+  const base = Number(employee.base_salary || 0);
+  const bonus = Number(employee.diligence_bonus || 0);
+  const bonusGot = late > BATAS_TELAT ? 0 : bonus;
+  const fine = late * DENDA_TELAT;
+  const box = $('pay');
+  box.replaceChildren();
+  const line = (label, value, cls) => {
+    const row = document.createElement('div'); row.className = 'row' + (cls ? ' ' + cls : '');
+    const a = document.createElement('b'); a.textContent = label;
+    const b = document.createElement('span'); b.textContent = value;
+    row.append(a, b); box.append(row);
+  };
+  if (!base && !bonus) { line('Belum diisi pemilik', '-'); return; }
+  line('Gaji pokok', rp(base));
+  line('Uang kerajinan', late > BATAS_TELAT ? `Hangus (telat ${late}x)` : rp(bonus));
+  line(`Denda telat (${late}x)`, late ? '−' + rp(fine) : rp(0));
+  line('PERKIRAAN TOTAL', rp(base + bonusGot - fine), 'pay-total');
+  const left = BATAS_TELAT - late;
+  $('pay-note').textContent = late > BATAS_TELAT
+    ? `Bulan ini sudah telat ${late}x, uang kerajinan hangus.`
+    : `Telat bulan ini ${late}x. ${left > 0 ? `Telat lebih dari ${BATAS_TELAT}x, uang kerajinan hangus.` : 'Sekali lagi telat, uang kerajinan hangus.'}`;
 }

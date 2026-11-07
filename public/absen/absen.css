@@ -36,3 +36,6 @@ input:focus, button:focus-visible { outline: 3px solid var(--orange); outline-of
 .frame video { transform: scaleX(-1); }
 .loc { margin: 0; font-size: 14px; font-weight: 700; color: var(--gray); text-align: center; }
 a.pill { text-decoration: none; display: inline-flex; align-items: center; }
+.pay-total { border-top: 2px dashed var(--ink); padding-top: 8px; font-size: 17px; }
+.pay-total span { font-weight: 900; }
+#pay-note { margin: 0; text-transform: none; }
