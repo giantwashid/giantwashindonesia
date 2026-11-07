@@ -29,7 +29,7 @@ async function load(email) {
   const { data } = await sb.from('employees').select('*').ilike('email', email).eq('active', true).maybeSingle();
   if (!data) { $('nolink-email').textContent = email; show('nolink-view'); return; }
   $('emp-name').textContent = data.name.split(' ')[0];
-  const isOwner = /owner|pemilik|accounting|akuntan/i.test(data.position || '');
+  const isOwner = /owner|pemilik|accounting|akuntan|supervisor|spv/i.test(data.position || '');
   $('owner-tile').classList.toggle('hidden', !isOwner);
   await setupOutlets(data);
   show('app-view');
