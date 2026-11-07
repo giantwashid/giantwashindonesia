@@ -2,9 +2,6 @@
 const SUPABASE_URL = 'https://oaxrqjbqtiibiqhsnvlt.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_OXzFWfF0lhf866nnu_9Z-Q_-WfZzDG8';
 const JAM_MASUK = '08:00'; // lewat jam ini dianggap telat
-// Aturan KPI: denda per telat, dan uang kerajinan hangus kalau telat lebih dari BATAS_TELAT kali dalam sebulan.
-const DENDA_TELAT = 10000;
-const BATAS_TELAT = 3;
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = (id) => document.getElementById(id);
@@ -55,7 +52,7 @@ async function loadEmployee(email) {
 
 async function refresh() {
   const { data, error } = await sb.from('attendance').select('*')
-    .eq('employee_id', employee.id).order('date', { ascending: false }).limit(8);
+    .eq('employee_id', employee.id).order('date', { ascending: false }).limit(6);
   if (error) { $('msg').textContent = 'Gagal memuat: ' + error.message; return; }
   todayRow = (data || []).find((r) => r.date === today()) || null;
   $('in').textContent = hm(todayRow?.check_in);
@@ -68,11 +65,9 @@ async function refresh() {
   else if (!todayRow.check_out) { btn.textContent = 'ABSEN PULANG'; btn.disabled = false; btn.classList.add('pulang'); }
   else { btn.textContent = 'SELESAI HARI INI'; btn.disabled = true; }
 
-  loadPay();
-
   const hist = $('history');
   hist.replaceChildren();
-  const past = (data || []).filter((r) => r.date !== today()).slice(0, 5);
+  const past = (data || []).filter((r) => r.date !== today()).slice(0, 4);
   if (!past.length) { const p = document.createElement('div'); p.className = 'row'; p.textContent = 'Belum ada riwayat.'; hist.append(p); }
   past.forEach((r) => {
     const d = new Date(r.date + 'T00:00:00');
@@ -80,8 +75,10 @@ async function refresh() {
     const left = document.createElement('b'); left.textContent = `${HARI[d.getDay()]} ${d.getDate()} ${BULAN[d.getMonth()]}`;
     const right = document.createElement('span');
     right.textContent = r.check_in ? `${hm(r.check_in)} – ${hm(r.check_out)}` : r.status;
-    if (r.status !== 'hadir') right.className = 'tag';
-    row.append(left, right); hist.append(row);
+    row.append(left, right);
+    if (r.status === 'telat') { const t = document.createElement('span'); t.className = 'tag telat'; t.textContent = 'Telat'; right.append(' ', t); }
+    else if (r.status !== 'hadir') right.className = 'tag';
+    hist.append(row);
   });
 }
 
@@ -99,7 +96,7 @@ function closeCam() {
   stopCam();
   shot = null;
   $('cam').classList.add('hidden');
-  $('action').classList.remove('hidden');
+  $('home').classList.remove('hidden');
 }
 
 function findLocation() {
@@ -132,8 +129,11 @@ async function startVideo() {
 $('action').addEventListener('click', () => {
   $('msg').textContent = '';
   $('cam-title').textContent = todayRow ? 'SELFIE ABSEN PULANG' : 'SELFIE ABSEN MASUK';
-  $('action').classList.add('hidden');
+  $('home').classList.add('hidden');
   $('cam').classList.remove('hidden');
+  $('meter').classList.toggle('hidden', !todayRow);
+  $('kwh').value = ''; $('gas').value = '';
+  loadFaceModel();
   findLocation();
   startVideo();
 });
@@ -153,6 +153,11 @@ $('cam-shot').addEventListener('click', async () => {
     const ctx = c.getContext('2d');
     ctx.translate(w, 0); ctx.scale(-1, 1); // sama seperti yang terlihat di layar
     ctx.drawImage(v, 0, 0, w, h);
+    $('msg').textContent = 'Memeriksa wajah...';
+    const face = await hasFace(c);
+    if (face === null) { $('msg').textContent = 'Pemeriksa wajah belum siap. Cek internet, lalu tekan AMBIL FOTO lagi.'; return; }
+    if (!face) { $('msg').textContent = 'Wajah tidak terlihat. Hadapkan wajah ke kamera di tempat terang, lalu foto lagi.'; return; }
+    $('msg').textContent = '';
     shot = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.8));
     stopCam();
     $('preview').src = URL.createObjectURL(shot);
@@ -162,6 +167,7 @@ $('cam-shot').addEventListener('click', async () => {
     $('cam-cancel').textContent = 'ULANGI';
     return;
   }
+  if (todayRow && ($('kwh').value === '' || $('gas').value === '')) { $('msg').textContent = 'Isi dulu sisa listrik (kWh) dan sisa gas (bar).'; return; }
   if (!pos) { $('msg').textContent = 'Lokasi belum ditemukan. Tunggu sebentar, atau nyalakan GPS/Lokasi.'; findLocation(); return; }
   submit();
 });
@@ -182,7 +188,7 @@ async function submit() {
       photo_in: path, lat_in: pos.latitude, lng_in: pos.longitude,
     });
   } else {
-    res = await sb.from('attendance').update({ check_out: t, photo_out: path, lat_out: pos.latitude, lng_out: pos.longitude }).eq('id', todayRow.id);
+    res = await sb.from('attendance').update({ check_out: t, photo_out: path, lat_out: pos.latitude, lng_out: pos.longitude, electric_kwh: Number($('kwh').value), gas_bar: Number($('gas').value) }).eq('id', todayRow.id);
   }
   btn.disabled = false;
   if (res.error) { $('msg').textContent = 'Gagal: ' + res.error.message; return; }
@@ -191,33 +197,28 @@ async function submit() {
   refresh();
 }
 
-// ---------- Perkiraan gaji bulan ini ----------
-const rp = (n) => 'Rp' + Math.round(Number(n) || 0).toLocaleString('id-ID');
-async function loadPay() {
-  const d = new Date();
-  const from = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
-  const { data } = await sb.from('attendance').select('status').eq('employee_id', employee.id).gte('date', from).lte('date', today());
-  const rows = data || [];
-  const late = rows.filter((r) => r.status === 'telat').length;
-  const base = Number(employee.base_salary || 0);
-  const bonus = Number(employee.diligence_bonus || 0);
-  const bonusGot = late > BATAS_TELAT ? 0 : bonus;
-  const fine = late * DENDA_TELAT;
-  const box = $('pay');
-  box.replaceChildren();
-  const line = (label, value, cls) => {
-    const row = document.createElement('div'); row.className = 'row' + (cls ? ' ' + cls : '');
-    const a = document.createElement('b'); a.textContent = label;
-    const b = document.createElement('span'); b.textContent = value;
-    row.append(a, b); box.append(row);
-  };
-  if (!base && !bonus) { line('Belum diisi pemilik', '-'); return; }
-  line('Gaji pokok', rp(base));
-  line('Uang kerajinan', late > BATAS_TELAT ? `Hangus (telat ${late}x)` : rp(bonus));
-  line(`Denda telat (${late}x)`, late ? '−' + rp(fine) : rp(0));
-  line('PERKIRAAN TOTAL', rp(base + bonusGot - fine), 'pay-total');
-  const left = BATAS_TELAT - late;
-  $('pay-note').textContent = late > BATAS_TELAT
-    ? `Bulan ini sudah telat ${late}x, uang kerajinan hangus.`
-    : `Telat bulan ini ${late}x. ${left > 0 ? `Telat lebih dari ${BATAS_TELAT}x, uang kerajinan hangus.` : 'Sekali lagi telat, uang kerajinan hangus.'}`;
+// ---------- Cek wajah di foto (MediaPipe, jalan di HP, foto tidak dikirim ke mana-mana) ----------
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+let faceDetector = null;
+let faceLoading = null;
+function loadFaceModel() {
+  if (faceDetector || faceLoading) return faceLoading;
+  faceLoading = (async () => {
+    try {
+      const { FilesetResolver, FaceDetector } = await import(MP + '/vision_bundle.mjs');
+      const files = await FilesetResolver.forVisionTasks(MP + '/wasm');
+      faceDetector = await FaceDetector.createFromOptions(files, {
+        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite' },
+        runningMode: 'IMAGE', minDetectionConfidence: 0.6,
+      });
+    } catch (err) { console.error('face model', err); }
+    faceLoading = null;
+  })();
+  return faceLoading;
+}
+// true = ada wajah, false = tidak ada, null = pemeriksa gagal dimuat
+async function hasFace(canvas) {
+  if (!faceDetector) await loadFaceModel();
+  if (!faceDetector) return null;
+  try { return faceDetector.detect(canvas).detections.length > 0; } catch (err) { console.error(err); return null; }
 }

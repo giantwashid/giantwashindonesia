@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&display=swap">
 <link rel="stylesheet" href="/absen/absen.css">
 </head>
-<body>
+<body class="absen-page">
 <main class="wrap">
 
   <!-- LOGIN -->
@@ -31,18 +31,24 @@
       <a class="pill" href="/karyawan/">← Menu</a>
     </div>
 
-    <div class="card clock">
-      <span id="date" class="label"></span>
-      <span id="time" class="big"></span>
-    </div>
+    <div id="home" class="home">
+      <div class="card clock">
+        <span id="date" class="label"></span>
+        <span id="time" class="big"></span>
+      </div>
 
-    <div class="grid2">
-      <div class="card mini"><span class="label">MASUK</span><span id="in" class="mid">--:--</span></div>
-      <div class="card mini"><span class="label">PULANG</span><span id="out" class="mid">--:--</span></div>
-    </div>
+      <div class="grid2">
+        <div class="card mini"><span class="label">MASUK</span><span id="in" class="mid">--:--</span></div>
+        <div class="card mini"><span class="label">PULANG</span><span id="out" class="mid">--:--</span></div>
+      </div>
 
-    <button id="action" class="btn big-btn" type="button" disabled>MEMUAT...</button>
-    <p id="msg" class="msg"></p>
+      <button id="action" class="btn big-btn" type="button" disabled>MEMUAT...</button>
+
+      <div class="card history">
+        <span class="h">RIWAYAT</span>
+        <div id="history"></div>
+      </div>
+    </div>
 
     <div id="cam" class="card cam hidden">
       <span class="h" id="cam-title">FOTO SELFIE</span>
@@ -51,22 +57,17 @@
         <img id="preview" class="hidden" alt="Foto selfie">
       </div>
       <p id="loc" class="loc">Mencari lokasi...</p>
+      <div id="meter" class="grid2 hidden">
+        <label>Sisa listrik (kWh)<input id="kwh" type="number" inputmode="decimal" step="any" min="0" placeholder="cth. 125,5"></label>
+        <label>Sisa gas (bar)<input id="gas" type="number" inputmode="decimal" step="any" min="0" placeholder="cth. 3"></label>
+      </div>
       <div class="grid2">
         <button id="cam-cancel" class="btn pulang" type="button">BATAL</button>
         <button id="cam-shot" class="btn" type="button">AMBIL FOTO</button>
       </div>
     </div>
 
-    <div class="card history">
-      <span class="h">PERKIRAAN GAJI BULAN INI</span>
-      <div id="pay"></div>
-      <p id="pay-note" class="label"></p>
-    </div>
-
-    <div class="card history">
-      <span class="h">RIWAYAT</span>
-      <div id="history"></div>
-    </div>
+    <p id="msg" class="msg"></p>
   </section>
 
   <!-- NOT LINKED -->
