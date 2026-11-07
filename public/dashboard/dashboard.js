@@ -23,17 +23,19 @@ let me = null, outlets = [], outlet = null, period = 'month', locked = false, em
   const shown = locked ? outlets.filter((o) => o.id === me.outlet_id) : outlets;
   const tabs = shown.map((o) => ({ id: o.id, name: o.name }));
   if (!locked) tabs.push({ id: null, name: 'Semua outlet' });
-  $('otabs').replaceChildren(...tabs.map((t) => { const b = el('button', '', t.name); b.type = 'button'; b.dataset.o = t.id ?? ''; return b; }));
+  $('osel').replaceChildren(...tabs.map((t) => { const o = el('option', '', t.name); o.value = t.id ?? ''; return o; }));
+  $('osel').disabled = locked;
   let saved = null;
   try { saved = localStorage.getItem('gw-dash-outlet'); } catch (_) {}
   outlet = locked ? me.outlet_id : (saved === '' ? null : tabs.some((t) => String(t.id) === saved) ? Number(saved) : tabs[0].id);
-  $('otabs').addEventListener('click', (e) => {
-    const o = e.target.dataset.o; if (o === undefined || locked) return;
+  $('osel').addEventListener('change', (e) => {
+    if (locked) return;
+    const o = e.target.value;
     outlet = o === '' ? null : Number(o);
     try { localStorage.setItem('gw-dash-outlet', o); } catch (_) {}
     load();
   });
-  $('ptabs').addEventListener('click', (e) => { const p = e.target.dataset.p; if (!p) return; period = p; load(); });
+  $('psel').addEventListener('change', (e) => { period = e.target.value; load(); });
   const { data: em } = await sb.from('employees').select('id,name,outlet_id,active');
   emps = em || [];
   $('board').classList.remove('hidden');
@@ -66,8 +68,8 @@ async function all(make) {
 }
 
 async function load() {
-  document.querySelectorAll('#otabs button').forEach((b) => b.classList.toggle('on', b.dataset.o === String(outlet ?? '')));
-  document.querySelectorAll('#ptabs button').forEach((b) => b.classList.toggle('on', b.dataset.p === period));
+  $('osel').value = String(outlet ?? '');
+  $('psel').value = period;
   const r = range();
   const F = iso(r.from), T = iso(r.to), PF = iso(r.pfrom), PT = iso(r.pto);
   $('range').textContent = `${fmtD(F)} – ${fmtD(iso(addDays(r.to, -1)))} ${r.from.getFullYear()} · dibanding ${r.len} hari sebelumnya`;
@@ -80,7 +82,7 @@ async function load() {
     all(() => scope(sb.from('purchases').select('total').gte('date', PF).lt('date', PT)).order('id')),
     sb.from('attendance').select('employee_id,date,status').gte('date', F).lt('date', T).in('employee_id', empIds.length ? empIds : [-1]),
     scope(sb.from('maintenance').select('*').neq('status', 'selesai')).order('date', { ascending: false }).limit(20),
-    sb.from('attendance').select('employee_id,date,check_out,electric_kwh,gas_bar').not('electric_kwh', 'is', null).in('employee_id', empIds.length ? empIds : [-1]).order('date', { ascending: false }).limit(60),
+    sb.from('attendance').select('employee_id,date,check_out,electric_kwh,gas_bar,detergent_pcs,softener_pcs').not('electric_kwh', 'is', null).in('employee_id', empIds.length ? empIds : [-1]).order('date', { ascending: false }).limit(60),
   ]);
   const err = [s, ps, p, pp, a, m, met].find((x) => x.error);
   $('status').textContent = err ? 'Sebagian data gagal dimuat: ' + err.error.message : '';
@@ -114,14 +116,17 @@ function kpis(sales, psales, purch, ppurch, mach) {
     ['Penjualan − biaya', (S - C < 0 ? '−' : '') + rp(Math.abs(S - C)), 'sebelum gaji'],
     ['Mesin belum beres', num(mach.length), mach.length ? 'cek daftar di bawah' : 'semua aman'],
   ];
-  $('kpis').replaceChildren(...items.map(([k, v, d]) => { const c = el('div', 'kpi'); c.append(el('span', 'k', k), el('span', 'v', v), el('span', 'd', d)); return c; }));
+  $('kpis').replaceChildren(...items.map(([k, v, d], i) => {
+    const c = el('div', 'kpi' + (i === 0 ? ' hero' : '') + (i === 5 && mach.length ? ' alert' : ''));
+    c.append(el('span', 'k', k), el('span', 'v', v), el('span', 'd', d)); return c;
+  }));
 }
 
 // Batang vertikal + tooltip saat disentuh / diarahkan.
 function bars(box, list, fmt, axis) {
   const max = Math.max(1, ...list.map((x) => x.v));
   box.replaceChildren(...list.map((x) => {
-    const b = el('div', 'b'); b.tabIndex = 0; b.dataset.tip = `${x.label}: ${fmt(x.v)}`;
+    const b = el('div', x.v === max && x.v > 0 ? 'b peak' : 'b'); b.tabIndex = 0; b.dataset.tip = `${x.label}: ${fmt(x.v)}`;
     const i = el('i'); i.style.height = (x.v / max) * 100 + '%'; b.append(i); return b;
   }));
   const ax = box.nextElementSibling && box.nextElementSibling.classList.contains('axis') ? box.nextElementSibling : el('div', 'axis');
@@ -178,18 +183,39 @@ function costs(purch) {
   hbars($('costs'), Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => ({ label: k, v })), (x) => short(x.v), 'Belum ada biaya di periode ini.');
 }
 
+// Meteran bulat: gas & listrik dibanding isian tertinggi yang pernah dicatat, deterjen & softener maks 300 pcs.
+function gauge(label, val, unit, max, low, lowText) {
+  const g = el('div', 'gauge');
+  if (val == null) { g.append(el('span', 's', '–'), el('span', '', label), el('span', 's', 'belum diisi')); return g; }
+  const pct = Math.max(0, Math.min(1, max ? val / max : 0)), r = 40, c = 2 * Math.PI * r;
+  const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', `${label} ${val} ${unit}`);
+  const ring = (color, dash) => { const k = document.createElementNS(ns, 'circle'); k.setAttribute('cx', 50); k.setAttribute('cy', 50); k.setAttribute('r', r); k.setAttribute('fill', 'none'); k.setAttribute('stroke', color); k.setAttribute('stroke-width', 12); if (dash) { k.setAttribute('stroke-dasharray', `${dash} ${c}`); k.setAttribute('stroke-linecap', 'round'); k.setAttribute('transform', 'rotate(-90 50 50)'); } return k; };
+  const t = document.createElementNS(ns, 'text'); t.setAttribute('x', 50); t.setAttribute('y', 52); t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', 17); t.setAttribute('font-weight', 900); t.setAttribute('fill', '#3d3d3d'); t.setAttribute('font-family', 'Archivo, sans-serif'); t.textContent = Number(val).toLocaleString('id-ID');
+  const u = document.createElementNS(ns, 'text'); u.setAttribute('x', 50); u.setAttribute('y', 68); u.setAttribute('text-anchor', 'middle'); u.setAttribute('font-size', 11); u.setAttribute('font-weight', 700); u.setAttribute('fill', '#737373'); u.setAttribute('font-family', 'Archivo, sans-serif'); u.textContent = unit;
+  svg.append(ring('#ececea'), ...(pct > 0 ? [ring(low ? '#f97316' : '#ffc21a', Math.max(1, pct * c))] : []), t, u);
+  g.append(svg, el('span', '', label), el('span', low ? 's low' : 's', low ? lowText : 'aman'));
+  return g;
+}
 function meters(rows) {
   const box = $('meters');
   if (!rows.length) { box.replaceChildren(el('p', 'empty', 'Belum ada isian. Akan muncul setelah karyawan absen pulang.')); return; }
   const last = rows[0];
   const nm = emps.find((e) => e.id === last.employee_id)?.name || '';
-  const prevGas = rows.slice(1).find((r) => r.gas_bar != null);
-  const line = (k, v) => { const r = el('div', 'row2'); r.append(el('span', '', k), el('b', '', v)); return r; };
-  const gas = el('b', last.gas_bar <= 1 ? 'warn' : '', `${num(last.gas_bar)} bar${last.gas_bar <= 1 ? ' · segera isi' : ''}`);
-  const g = el('div', 'row2'); g.append(el('span', '', 'Sisa gas'), gas);
-  box.replaceChildren(line('Sisa listrik', `${Number(last.electric_kwh).toLocaleString('id-ID')} kWh`), g,
-    line('Dicatat', `${fmtD(last.date)} ${String(last.check_out || '').slice(0, 5)} · ${nm.split(' ')[0]}`),
-    ...(prevGas ? [line('Sebelumnya', `${Number(rows[1].electric_kwh).toLocaleString('id-ID')} kWh · ${num(prevGas.gas_bar)} bar`)] : []));
+  const maxOf = (k) => Math.max(0, ...rows.map((r) => Number(r[k]) || 0));
+  const has = (v) => v != null && v !== '';
+  const det = has(last.detergent_pcs) ? Number(last.detergent_pcs) : null, sof = has(last.softener_pcs) ? Number(last.softener_pcs) : null;
+  const gas = has(last.gas_bar) ? Number(last.gas_bar) : null, kwh = has(last.electric_kwh) ? Number(last.electric_kwh) : null;
+  const gs = el('div', 'gauges');
+  gs.append(
+    gauge('Gas', gas, 'bar', maxOf('gas_bar'), gas != null && gas <= 1, 'segera isi'),
+    gauge('Listrik', kwh, 'kWh', maxOf('electric_kwh'), false, ''),
+    gauge('Deterjen', det, 'pcs', 300, det != null && det < 100, 'beli lagi'),
+    gauge('Softener', sof, 'pcs', 300, sof != null && sof < 100, 'beli lagi'),
+  );
+  const line = el('div', 'row2'); line.style.marginTop = '12px';
+  line.append(el('span', '', 'Dicatat'), el('b', '', `${fmtD(last.date)} ${String(last.check_out || '').slice(0, 5)} · ${nm.split(' ')[0]}`));
+  box.replaceChildren(gs, line);
 }
 
 function attend(rows) {

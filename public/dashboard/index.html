@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#ffd23f">
+<meta name="theme-color" content="#ececea">
 <title>Dashboard Outlet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&display=swap">
 <link rel="stylesheet" href="/absen/absen.css">
 <link rel="stylesheet" href="/dashboard/dashboard.css">
 </head>
-<body>
+<body class="dash-page">
 <main class="dash">
   <div class="top">
     <span class="hello">Dashboard</span>
@@ -25,14 +25,14 @@
 
   <div id="board" class="hidden">
     <div class="filters">
-      <nav class="chips" id="otabs" aria-label="Outlet"></nav>
-      <nav class="chips" id="ptabs" aria-label="Periode">
-        <button type="button" data-p="today">Hari ini</button>
-        <button type="button" data-p="7">7 hari</button>
-        <button type="button" data-p="month">Bulan ini</button>
-        <button type="button" data-p="last">Bulan lalu</button>
-        <button type="button" data-p="90">3 bulan</button>
-      </nav>
+      <label class="sel">Outlet<select id="osel"></select></label>
+      <label class="sel">Periode<select id="psel">
+        <option value="today">Hari ini</option>
+        <option value="7">7 hari terakhir</option>
+        <option value="month">Bulan ini</option>
+        <option value="last">Bulan lalu</option>
+        <option value="90">3 bulan terakhir</option>
+      </select></label>
     </div>
     <p id="range" class="range"></p>
     <p id="status" class="range"></p>
@@ -62,9 +62,9 @@
         <div id="costs" class="hbars"></div>
       </div>
       <div class="card">
-        <h2>Stok listrik & gas</h2>
+        <h2>Stok</h2>
         <div id="meters"></div>
-        <p class="note">Dari isian absen pulang terakhir.</p>
+        <p class="note">Dari isian absen pulang terakhir. Deterjen & softener maks 300 pcs, di bawah 100 harus beli.</p>
       </div>
       <div class="card">
         <h2>Absensi</h2>
