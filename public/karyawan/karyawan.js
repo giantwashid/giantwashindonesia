@@ -24,5 +24,30 @@ async function load(email) {
   $('emp-name').textContent = data.name.split(' ')[0];
   const isOwner = /owner|pemilik/i.test(data.position || '');
   $('owner-tile').classList.toggle('hidden', !isOwner);
+  await setupOutlets(data);
   show('app-view');
+}
+
+// Karyawan satu outlet: langsung ke outletnya. Pemilik / tanpa outlet: pilih lewat tab outlet.
+async function setupOutlets(emp) {
+  const { data } = await sb.from('outlets').select('*').eq('active', true).order('id');
+  const outlets = data || [];
+  const tabs = $('otabs');
+  const pick = (id) => {
+    const o = outlets.find((x) => x.id === id);
+    $('outlet-label').textContent = o ? 'OUTLET: ' + o.name : '';
+    document.querySelectorAll('[data-page]').forEach((a) => { a.href = a.dataset.page + '?outlet=' + id; });
+    tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.id) === id));
+    try { localStorage.setItem('gw-outlet', String(id)); } catch (_) {}
+  };
+  if (emp.outlet_id) { tabs.classList.add('hidden'); pick(emp.outlet_id); return; }
+  tabs.replaceChildren(...outlets.map((o) => {
+    const b = el('button', 'otab', o.name); b.type = 'button'; b.dataset.id = o.id;
+    b.addEventListener('click', () => pick(o.id));
+    return b;
+  }));
+  tabs.classList.remove('hidden');
+  let saved = null;
+  try { saved = Number(localStorage.getItem('gw-outlet')); } catch (_) {}
+  pick(outlets.some((o) => o.id === saved) ? saved : (outlets[0] && outlets[0].id));
 }

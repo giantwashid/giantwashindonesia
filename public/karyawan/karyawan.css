@@ -19,3 +19,6 @@ textarea { min-height: 84px; resize: vertical; }
 .small-btn { font: inherit; font-size: 13px; font-weight: 800; border: 2px solid var(--ink); border-radius: 10px; background: var(--white); padding: 6px 10px; min-height: 36px; cursor: pointer; align-self: flex-start; }
 .thumb { width: 72px; height: 72px; object-fit: cover; border: 2px solid var(--ink); border-radius: 10px; }
 .total { font-size: 22px; font-weight: 900; text-align: right; }
+.otabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.otab { font: inherit; font-weight: 800; font-size: 15px; min-height: 48px; border: 3px solid var(--ink); border-radius: 14px; background: var(--white); color: var(--ink); cursor: pointer; padding: 6px 8px; }
+.otab.on { background: var(--orange); box-shadow: 3px 3px 0 var(--ink); }

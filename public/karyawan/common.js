@@ -17,17 +17,6 @@ async function requireEmployee() {
   return data;
 }
 
-async function fillOutlets(select) {
-  const { data } = await sb.from('outlets').select('*').eq('active', true).order('id');
-  const outlets = data || [];
-  select.replaceChildren(...outlets.map((o) => { const op = el('option', null, o.name); op.value = o.id; return op; }));
-  let saved = null;
-  try { saved = localStorage.getItem('gw-outlet'); } catch (_) {}
-  if (saved && outlets.some((o) => String(o.id) === saved)) select.value = saved;
-  select.addEventListener('change', () => { try { localStorage.setItem('gw-outlet', select.value); } catch (_) {} });
-  return outlets;
-}
-
 // Kecilkan foto sebelum di-upload (lebar maks 900px).
 async function shrinkPhoto(file) {
   const img = await createImageBitmap(file);
@@ -36,4 +25,14 @@ async function shrinkPhoto(file) {
   c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   return new Promise((r) => c.toBlob(r, 'image/jpeg', 0.8));
+}
+
+// Outlet kerja. Karyawan yang terdaftar di satu outlet selalu memakai outlet itu.
+// Pemilik / karyawan tanpa outlet memakai outlet dari link (?outlet=), yang dipilih di menu karyawan.
+async function currentOutlet(employee) {
+  const id = employee.outlet_id || Number(new URLSearchParams(location.search).get('outlet'));
+  if (!id) { location.href = '/karyawan/'; return null; }
+  const { data } = await sb.from('outlets').select('*').eq('id', id).maybeSingle();
+  if (!data) { location.href = '/karyawan/'; return null; }
+  return data;
 }
