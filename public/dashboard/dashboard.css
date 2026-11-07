@@ -1,0 +1,37 @@
+/* Dashboard outlet - gaya 5 (kuning, kartu putih bergaris, oranye) */
+.dash { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; display: flex; flex-direction: column; gap: 14px; }
+.dash h2 { margin: 0 0 12px; font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: .3px; }
+.dash p { margin: 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: inherit; font-weight: 800; font-size: 14px; min-height: 40px; padding: 6px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--white); color: var(--ink); cursor: pointer; }
+.chips button.on { background: var(--orange); box-shadow: 2px 2px 0 var(--ink); }
+.range { font-weight: 700; color: var(--gray); font-size: 14px; min-height: 0; }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 4px; }
+.kpi { background: var(--white); border: 3px solid var(--ink); border-radius: 16px; padding: 12px 14px; box-shadow: 4px 4px 0 var(--ink); display: flex; flex-direction: column; gap: 2px; }
+.kpi .k { font-size: 12px; font-weight: 800; color: var(--gray); text-transform: uppercase; }
+.kpi .v { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.kpi .d { font-size: 13px; font-weight: 700; color: var(--gray); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.grid .wide { grid-column: 1 / -1; }
+.chart { display: flex; align-items: flex-end; gap: 2px; height: 180px; border-bottom: 2px solid var(--ink); position: relative; }
+.chart.small { height: 120px; }
+.chart .b { flex: 1 1 0; min-width: 1px; position: relative; height: 100%; display: flex; align-items: flex-end; cursor: default; }
+.chart .b i { display: block; width: 100%; background: #ea580c; border-radius: 4px 4px 0 0; min-height: 1px; }
+.chart .b:hover i, .chart .b:focus i { background: var(--ink); }
+.axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--gray); font-weight: 700; margin-top: 4px; }
+.hbars { display: grid; grid-template-columns: minmax(70px, 38%) minmax(40px, 1fr) auto; gap: 8px; align-items: center; font-size: 14px; }
+.hbars .empty { grid-column: 1 / -1; }
+.hb { display: contents; }
+.hb .n { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb .t { height: 12px; background: #eeeeee; border-radius: 4px; overflow: hidden; }
+.hb .t i { display: block; height: 100%; background: #ea580c; border-radius: 0 4px 4px 0; }
+.hb .v { font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; }
+.row2 { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #c8c8c8; font-size: 14px; }
+.row2:last-child { border-bottom: 0; }
+.row2 b { font-weight: 800; }
+.note { font-size: 12px; color: var(--gray); font-weight: 600; margin-top: 8px !important; }
+.empty { color: var(--gray); font-weight: 700; font-size: 14px; }
+.warn { background: var(--yellow); border-radius: 6px; padding: 0 6px; font-weight: 800; }
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--ink); color: var(--white); font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 8px; white-space: nowrap; }
+@media (max-width: 640px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpi .v { font-size: 18px; } .chart { height: 150px; } }
