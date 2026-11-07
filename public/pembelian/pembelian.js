@@ -30,6 +30,18 @@ form.addEventListener('submit', async (e) => {
   new FormData(form).forEach((v, k) => { if (v !== '') row[k] = v; });
   row.outlet_id = outlet.id;
   $('save').disabled = true;
+  $('msg').textContent = 'Mengirim foto nota...';
+  try {
+    const blob = await shrinkPhoto($('photo').files[0]);
+    const path = `${outlet.id}/${today()}/${employee.id}-${Date.now()}.jpg`;
+    const up = await sb.storage.from('nota-foto').upload(path, blob, { contentType: 'image/jpeg' });
+    if (up.error) throw up.error;
+    row.photo = path;
+  } catch (err) {
+    $('save').disabled = false;
+    $('msg').textContent = 'Foto nota gagal di-upload: ' + (err.message || err);
+    return;
+  }
   $('msg').textContent = 'Menyimpan...';
   const { error } = await sb.from('purchases').insert(row);
   $('save').disabled = false;
