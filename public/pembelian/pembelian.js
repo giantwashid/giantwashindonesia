@@ -1,5 +1,6 @@
 // Karyawan mencatat pembelian barang. Masuk ke tabel purchases (Panel Laporan, menu Pembelian).
 let employee = null;
+let outlet = null;
 const form = $('form');
 
 function updateTotal() {
@@ -9,7 +10,7 @@ function updateTotal() {
 form.addEventListener('input', updateTotal);
 
 async function loadList() {
-  const { data } = await sb.from('purchases').select('*').eq('outlet_id', Number($('outlet').value))
+  const { data } = await sb.from('purchases').select('*').eq('outlet_id', outlet.id)
     .order('date', { ascending: false }).order('id', { ascending: false }).limit(10);
   const list = $('list');
   list.replaceChildren();
@@ -27,7 +28,7 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const row = { created_by: employee.name };
   new FormData(form).forEach((v, k) => { if (v !== '') row[k] = v; });
-  row.outlet_id = Number(row.outlet_id);
+  row.outlet_id = outlet.id;
   $('save').disabled = true;
   $('msg').textContent = 'Menyimpan...';
   const { error } = await sb.from('purchases').insert(row);
@@ -44,7 +45,8 @@ form.addEventListener('submit', async (e) => {
   employee = await requireEmployee();
   if (!employee) return;
   $('date').value = today();
-  await fillOutlets($('outlet'));
-  $('outlet').addEventListener('change', loadList);
+  outlet = await currentOutlet(employee);
+  if (!outlet) return;
+  $('outlet-name').textContent = 'OUTLET: ' + outlet.name;
   loadList();
 })();
