@@ -38,6 +38,7 @@
     <nav class="tabs" id="tabs">
       <button data-tab="attendance" class="active">Absensi</button>
       <button data-tab="sales">Penjualan</button>
+      <button data-tab="daily">Rekap Harian</button>
       <button data-tab="purchases">Pembelian</button>
       <button data-tab="products">Harga</button>
       <button data-tab="maintenance">Maintenance</button>
@@ -113,6 +114,12 @@
       <p>Laporan mesin rusak / servis dari karyawan (halaman <a href="/maintenance/">/maintenance/</a>).</p>
       <div class="summary" id="sum-maintenance"></div>
       <div class="table-wrap"><table id="tbl-maintenance"></table></div>
+    </div>
+
+    <div class="panel hidden" data-panel="daily">
+      <p>Rekap penjualan per hari dan per cara bayar. Cocokkan Tunai dengan uang di laci, QRIS dengan settlement, dan Transfer dengan mutasi rekening. Lalu tekan "Tandai sudah dicek".</p>
+      <div class="summary" id="sum-daily"></div>
+      <div class="table-wrap"><table id="tbl-daily"></table></div>
     </div>
 
     <div class="panel hidden" data-panel="payroll">

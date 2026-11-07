@@ -9,20 +9,23 @@ const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const COLS = {
   attendance: [['date', 'Tanggal'], ['employee', 'Karyawan'], ['check_in', 'Masuk'], ['check_out', 'Pulang'], ['status', 'Status'], ['photo_in', 'Foto masuk'], ['loc_in', 'Lokasi masuk'], ['photo_out', 'Foto pulang'], ['loc_out', 'Lokasi pulang'], ['note', 'Catatan']],
   sales: [['date', 'Tanggal'], ['invoice_no', 'No. Nota'], ['customer', 'Pelanggan'], ['item', 'Layanan/Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['payment_method', 'Bayar'], ['cashier', 'Kasir'], ['note', 'Catatan']],
-  purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['created_by', 'Dicatat oleh'], ['note', 'Catatan']],
+  purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['photo', 'Foto nota'], ['created_by', 'Dicatat oleh'], ['note', 'Catatan']],
+  daily: [['date', 'Tanggal'], ['outlet', 'Outlet'], ['nota', 'Jumlah nota'], ['tunai', 'Tunai'], ['qris', 'QRIS'], ['transfer', 'Transfer'], ['total', 'Total'], ['check', 'Status cek'], ['check_note', 'Catatan selisih']],
   products: [['sort', 'Urutan'], ['name', 'Nama'], ['price', 'Harga 06:00-22:59'], ['price_night', 'Harga 23:00-05:59'], ['unit', 'Satuan'], ['note', 'Catatan']],
   maintenance: [['date', 'Tanggal'], ['machine', 'Mesin'], ['kind', 'Jenis'], ['description', 'Keterangan'], ['status', 'Status'], ['photo', 'Foto'], ['reported_by', 'Pelapor'], ['fixed_by', 'Dibereskan oleh']],
   employees: [['name', 'Nama'], ['position', 'Jabatan'], ['email', 'Email login'], ['outlet_id', 'Outlet'], ['base_salary', 'Gaji pokok'], ['diligence_bonus', 'Uang kerajinan']],
   payroll: [['name', 'Karyawan'], ['present', 'Masuk (hari)'], ['late', 'Telat (x)'], ['base_salary', 'Gaji pokok'], ['bonus_got', 'Uang kerajinan'], ['fine', 'Denda telat'], ['pay_total', 'Perkiraan gaji']],
   contacts: [['created_at', 'Waktu'], ['name', 'Nama'], ['email', 'Email'], ['phone', 'HP'], ['message', 'Pesan']],
 };
-const MONEY = ['price', 'price_night', 'total', 'base_salary', 'diligence_bonus', 'bonus_got', 'fine', 'pay_total'];
+const MONEY = ['price', 'price_night', 'total', 'tunai', 'qris', 'transfer', 'base_salary', 'diligence_bonus', 'bonus_got', 'fine', 'pay_total'];
 // Aturan KPI (sama dengan halaman absen): denda per telat, uang kerajinan hangus kalau telat > BATAS_TELAT.
 const DENDA_TELAT = 10000;
 const BATAS_TELAT = 3;
 let current = 'attendance';
 let outlets = [];
 let adminOutlet = null; // null = semua outlet
+let me = null;        // data karyawan yang sedang login
+let canEdit = false;  // pemilik: boleh tambah/hapus/ubah. Accounting: hanya lihat + tandai sudah dicek.
 let employees = [];
 let lastRows = [];
 
@@ -50,6 +53,16 @@ let started = false;
 async function init() {
   if (started) return;
   started = true;
+  const { data: { session } } = await sb.auth.getSession();
+  const { data: emp } = await sb.from('employees').select('*').ilike('email', session.user.email).eq('active', true).maybeSingle();
+  me = emp;
+  const role = emp ? (emp.position || '') : '';
+  canEdit = /owner|pemilik/i.test(role);
+  if (!canEdit && !/accounting|akuntan/i.test(role)) {
+    $('#app-view').innerHTML = '<div class="container"><h2>Tidak punya akses</h2><p>Panel Laporan hanya untuk pemilik dan accounting. Kembali ke <a href="/karyawan/">menu karyawan</a>.</p></div>';
+    return;
+  }
+  document.body.classList.toggle('readonly', !canEdit);
   const now = new Date();
   $('#month').value = now.toISOString().slice(0, 7);
   document.querySelectorAll('input[type=date]').forEach((i) => (i.value = now.toISOString().slice(0, 10)));
@@ -103,6 +116,38 @@ function monthRange() {
   return [m + '-01', end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-01'];
 }
 
+// Rekap harian penjualan per metode bayar, untuk dicocokkan accounting.
+async function loadDaily() {
+  const [from, to] = monthRange();
+  let q = sb.from('sales').select('date,outlet_id,invoice_no,total,payment_method').gte('date', from).lt('date', to);
+  let c = sb.from('daily_checks').select('*').gte('date', from).lt('date', to);
+  if (adminOutlet !== null) { q = q.eq('outlet_id', adminOutlet); c = c.eq('outlet_id', adminOutlet); }
+  const [{ data, error }, { data: checks }] = await Promise.all([q, c]);
+  if (error) { $('#app-status').textContent = 'Gagal memuat: ' + error.message; return; }
+  $('#app-status').textContent = '';
+  const oname = Object.fromEntries(outlets.map((o) => [o.id, o.name]));
+  const days = {};
+  (data || []).forEach((r) => {
+    const key = r.date + '|' + (r.outlet_id ?? '');
+    const d = days[key] || (days[key] = { date: r.date, outlet_id: r.outlet_id, outlet: oname[r.outlet_id] || '-', notas: new Set(), tunai: 0, qris: 0, transfer: 0, total: 0 });
+    const t = Number(r.total || 0);
+    d.notas.add(r.invoice_no);
+    if (d[r.payment_method] !== undefined) d[r.payment_method] += t;
+    d.total += t;
+  });
+  (checks || []).forEach((k) => {
+    const key = k.date + '|' + (k.outlet_id ?? '');
+    const d = days[key] || (days[key] = { date: k.date, outlet_id: k.outlet_id, outlet: oname[k.outlet_id] || '-', notas: new Set(), tunai: 0, qris: 0, transfer: 0, total: 0 });
+    d.checked = k;
+  });
+  lastRows = Object.values(days).sort((a, b) => (a.date < b.date ? 1 : -1)).map((d) => ({
+    ...d, nota: d.notas.size,
+    check: d.checked ? `✓ ${d.checked.checked_by || ''}` : '',
+    check_note: d.checked ? d.checked.note || '' : '',
+  }));
+  render();
+}
+
 async function loadPayroll() {
   const [from, to] = monthRange();
   const { data, error } = await sb.from('attendance').select('employee_id,status').gte('date', from).lt('date', to);
@@ -124,6 +169,7 @@ async function load() {
   const status = $('#app-status');
   status.textContent = 'Memuat...';
   if (current === 'payroll') { await loadEmployees(); return loadPayroll(); }
+  if (current === 'daily') return loadDaily();
   let q = sb.from(current).select('*');
   const [from, to] = monthRange();
   if (['attendance', 'sales', 'purchases', 'maintenance'].includes(current)) q = q.gte('date', from).lt('date', to).order('date', { ascending: false });
@@ -153,10 +199,10 @@ async function load() {
       lastRows.forEach((r) => { r.photo_in_url = map[r.photo_in]; r.photo_out_url = map[r.photo_out]; });
     }
   }
-  if (current === 'maintenance') {
+  if (current === 'maintenance' || current === 'purchases') {
     const paths = lastRows.map((r) => r.photo).filter(Boolean);
     if (paths.length) {
-      const { data: urls } = await sb.storage.from('maintenance-foto').createSignedUrls(paths, 3600);
+      const { data: urls } = await sb.storage.from(current === 'purchases' ? 'nota-foto' : 'maintenance-foto').createSignedUrls(paths, 3600);
       const map = Object.fromEntries((urls || []).map((u) => [u.path, u.signedUrl]));
       lastRows.forEach((r) => { r.photo_url = map[r.photo]; });
     }
@@ -170,6 +216,8 @@ function render() {
   const body = lastRows.map((r) => '<tr>' + cols.map(([k]) => {
     let v = r[k];
     if (k === 'created_at') v = new Date(v).toLocaleString('id-ID');
+    if (current === 'daily' && k === 'check' && !r.checked) return `<td><button class="chk" data-date="${r.date}" data-outlet="${r.outlet_id ?? ''}">Tandai sudah dicek</button></td>`;
+    if (current === 'daily' && k === 'check_note' && !r.checked) return `<td><input class="chknote" data-key="${r.date}|${r.outlet_id ?? ''}" placeholder="Selisih / catatan"></td>`;
     if (current === 'employees' && k === 'outlet_id') return `<td><select class="inline" data-id="${r.id}" data-k="outlet_id" aria-label="Outlet"><option value="">Semua (pemilik)</option>${outlets.map((o) => `<option value="${o.id}"${o.id === v ? ' selected' : ''}>${esc(o.name)}</option>`).join('')}</select></td>`;
     if (current === 'employees' && (k === 'base_salary' || k === 'diligence_bonus')) return `<td><input class="inline" type="number" step="any" data-id="${r.id}" data-k="${k}" value="${esc(v ?? '')}" aria-label="${k}"></td>`;
     if (MONEY.includes(k)) return `<td class="num">${rupiah(v)}</td>`;
@@ -179,12 +227,16 @@ function render() {
     }
     if ((k === 'loc_in' || k === 'loc_out') && v) return `<td><a href="https://www.google.com/maps?q=${esc(v)}" target="_blank" rel="noopener">Lihat peta</a></td>`;
     return `<td>${esc(v)}</td>`;
-  }).join('') + (current === 'payroll' ? '<td></td>' : `<td><button class="del" title="Hapus" data-id="${r.id}">✕</button></td>`) + '</tr>').join('');
+  }).join('') + (['payroll', 'daily'].includes(current) || !canEdit ? '<td></td>' : `<td><button class="del" title="Hapus" data-id="${r.id}">✕</button></td>`) + '</tr>').join('');
   $('#tbl-' + current).innerHTML = head + (body || `<tr><td colspan="${cols.length + 1}">Belum ada data di bulan ini.</td></tr>`);
 
   const sum = $('#sum-' + current);
   if (!sum) return;
-  if (current === 'payroll') {
+  if (current === 'daily') {
+    const s = (k) => lastRows.reduce((a, r) => a + r[k], 0);
+    const done = lastRows.filter((r) => r.checked).length;
+    sum.innerHTML = `<div>Tunai: <b>${rupiah(s('tunai'))}</b></div><div>QRIS: <b>${rupiah(s('qris'))}</b></div><div>Transfer: <b>${rupiah(s('transfer'))}</b></div><div>Total: <b>${rupiah(s('total'))}</b></div><div>Sudah dicek: <b>${done}/${lastRows.length} hari</b></div>`;
+  } else if (current === 'payroll') {
     const total = lastRows.reduce((a, r) => a + r.pay_total, 0);
     sum.innerHTML = `<div>Karyawan: <b>${lastRows.length}</b></div><div>Total perkiraan gaji: <b>${rupiah(total)}</b></div><div>Aturan: denda ${rupiah(DENDA_TELAT)}/telat, uang kerajinan hangus kalau telat lebih dari ${BATAS_TELAT}x</div>`;
   } else if (current === 'maintenance') {
@@ -247,4 +299,16 @@ document.addEventListener('change', async (e) => {
   const { error } = await sb.from('employees').update({ [inp.dataset.k]: inp.value === '' ? null : Number(inp.value) }).eq('id', inp.dataset.id);
   $('#app-status').textContent = error ? 'Gagal menyimpan: ' + error.message : 'Tersimpan.';
   if (!error) { await loadEmployees(); if (inp.dataset.k === 'outlet_id') load(); }
+});
+
+// Accounting / pemilik menandai satu hari (per outlet) sudah cocok.
+document.addEventListener('click', async (e) => {
+  const b = e.target;
+  if (!b.classList || !b.classList.contains('chk')) return;
+  const key = b.dataset.date + '|' + b.dataset.outlet;
+  const note = document.querySelector(`.chknote[data-key="${key}"]`)?.value || null;
+  b.disabled = true;
+  const { error } = await sb.from('daily_checks').insert({ date: b.dataset.date, outlet_id: b.dataset.outlet ? Number(b.dataset.outlet) : null, checked_by: me ? me.name : null, note });
+  if (error) { $('#app-status').textContent = 'Gagal: ' + error.message; b.disabled = false; return; }
+  load();
 });

@@ -21,3 +21,7 @@ td.num { text-align: right; }
 .inline { width: 130px; padding: 6px 8px; font: inherit; }
 .otabs { padding-bottom: 12px; border-bottom: 2px solid #e6ebf0; }
 .otabs button { font-weight: 700; font-size: 1rem; padding: 10px 20px; }
+.readonly form.grid-form, .readonly .del { display: none !important; }
+.readonly input.inline, .readonly select.inline { pointer-events: none; border-color: transparent; background: transparent; }
+.chk { font: inherit; font-size: .85rem; padding: 6px 10px; border-radius: 8px; border: 1px solid #d5dde5; background: #fff; cursor: pointer; }
+.chknote { width: 170px; padding: 6px 8px; font: inherit; }
