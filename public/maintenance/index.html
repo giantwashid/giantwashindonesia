@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#ffd23f">
+<title>Laporan Maintenance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&display=swap">
+<link rel="stylesheet" href="/absen/absen.css">
+<link rel="stylesheet" href="/karyawan/karyawan.css">
+</head>
+<body>
+<main class="wrap">
+  <section id="app-view">
+    <div class="top">
+      <span class="hello">Maintenance</span>
+      <a class="pill" href="/karyawan/">← Menu</a>
+    </div>
+    <form id="form" class="card stack">
+      <label>Outlet<select id="outlet" name="outlet_id"></select></label>
+      <label>Mesin / alat<input name="machine" list="machines" required placeholder="mis. Mesin Cuci 2"></label>
+      <datalist id="machines">
+        <option value="Mesin Cuci 1"><option value="Mesin Cuci 2"><option value="Mesin Cuci 3"><option value="Mesin Cuci 4">
+        <option value="Pengering 1"><option value="Pengering 2"><option value="Pengering 3"><option value="Pengering 4">
+        <option value="Mesin Deterjen / Vending"><option value="Mesin Pembayaran"><option value="Lainnya">
+      </datalist>
+      <label>Jenis<select name="kind">
+        <option>Rusak</option><option>Servis rutin</option><option>Pembersihan</option><option>Lainnya</option>
+      </select></label>
+      <label>Keterangan<textarea name="description" required placeholder="Apa masalahnya / apa yang dikerjakan?"></textarea></label>
+      <label>Status<select name="status">
+        <option value="rusak">Belum beres</option><option value="selesai">Sudah beres</option>
+      </select></label>
+      <label>Foto (boleh kosong)<input id="photo" type="file" accept="image/*" capture="environment"></label>
+      <button class="btn big-btn" id="save" type="submit">KIRIM LAPORAN</button>
+      <p id="msg" class="msg"></p>
+    </form>
+    <div class="card history">
+      <span class="h">LAPORAN TERAKHIR DI OUTLET INI</span>
+      <div id="list"></div>
+    </div>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/karyawan/common.js"></script>
+<script src="/maintenance/maintenance.js"></script>
+</body>
+</html>
