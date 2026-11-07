@@ -10,7 +10,7 @@ const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.g
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 
 let employee = null;
-let outlets = [];
+let outlet = null;
 let products = [];
 let cart = {};          // product id -> qty
 let pay = 'tunai';
@@ -39,25 +39,18 @@ async function start(email) {
   if (error || !data) { $('nolink-email').textContent = email; show('nolink-view'); return; }
   employee = data;
   $('emp-name').textContent = data.name;
-  const res = await sb.from('outlets').select('*').eq('active', true).order('id');
-  outlets = res.data || [];
-  const sel = $('outlet');
-  sel.replaceChildren(...outlets.map((o) => { const op = el('option', null, o.name); op.value = o.id; return op; }));
-  let saved = null;
-  try { saved = localStorage.getItem('gw-outlet'); } catch (_) {}
-  if (saved && outlets.some((o) => String(o.id) === saved)) sel.value = saved;
+  // Outlet: dari data karyawan, atau dari link (?outlet=) untuk pemilik.
+  const oid = data.outlet_id || Number(new URLSearchParams(location.search).get('outlet'));
+  const res = oid ? await sb.from('outlets').select('*').eq('id', oid).maybeSingle() : { data: null };
+  if (!res.data) { location.href = '/karyawan/'; return; }
+  outlet = res.data;
+  $('outlet-name').textContent = outlet.name;
   show('app-view');
   loadProducts();
 }
 
-$('outlet').addEventListener('change', () => {
-  try { localStorage.setItem('gw-outlet', $('outlet').value); } catch (_) {}
-  cart = {};
-  loadProducts();
-});
-
 async function loadProducts() {
-  const outletId = Number($('outlet').value);
+  const outletId = outlet.id;
   const { data, error } = await sb.from('products').select('*').eq('active', true)
     .or(`outlet_id.eq.${outletId},outlet_id.is.null`).order('sort').order('name');
   if (error) { $('msg').textContent = 'Gagal memuat harga: ' + error.message; return; }
@@ -67,7 +60,7 @@ async function loadProducts() {
 }
 
 async function loadToday() {
-  const { data } = await sb.from('sales').select('invoice_no,total').eq('date', today()).eq('outlet_id', Number($('outlet').value));
+  const { data } = await sb.from('sales').select('invoice_no,total').eq('date', today()).eq('outlet_id', outlet.id);
   const rows = data || [];
   const n = new Set(rows.map((r) => r.invoice_no)).size;
   const sum = rows.reduce((a, r) => a + Number(r.total || 0), 0);
@@ -154,7 +147,6 @@ $('pay-btn').addEventListener('click', async () => {
   btn.disabled = true;
   $('msg').textContent = 'Menyimpan...';
   const d = new Date();
-  const outlet = outlets.find((o) => String(o.id) === $('outlet').value);
   const no = `GW${outlet ? outlet.id : ''}-${String(d.getFullYear()).slice(2)}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
   const customer = $('customer').value.trim() || null;
   const chosen = products.filter((p) => cart[p.id]);
