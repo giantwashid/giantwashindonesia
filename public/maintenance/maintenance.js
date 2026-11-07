@@ -1,9 +1,10 @@
 // Karyawan melapor mesin rusak / servis. Masuk ke tabel maintenance (Panel Laporan, menu Maintenance).
 let employee = null;
+let outlet = null;
 const form = $('form');
 
 async function loadList() {
-  const { data } = await sb.from('maintenance').select('*').eq('outlet_id', Number($('outlet').value))
+  const { data } = await sb.from('maintenance').select('*').eq('outlet_id', outlet.id)
     .order('created_at', { ascending: false }).limit(10);
   const rows = data || [];
   const paths = rows.map((r) => r.photo).filter(Boolean);
@@ -42,7 +43,7 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const row = { reported_by: employee.name, date: today() };
   new FormData(form).forEach((v, k) => { if (v !== '' && !(v instanceof File)) row[k] = v; });
-  row.outlet_id = Number(row.outlet_id);
+  row.outlet_id = outlet.id;
   if (row.status === 'selesai') { row.fixed_at = new Date().toISOString(); row.fixed_by = employee.name; }
   $('save').disabled = true;
   $('msg').textContent = 'Mengirim...';
@@ -71,7 +72,8 @@ form.addEventListener('submit', async (e) => {
 (async () => {
   employee = await requireEmployee();
   if (!employee) return;
-  await fillOutlets($('outlet'));
-  $('outlet').addEventListener('change', loadList);
+  outlet = await currentOutlet(employee);
+  if (!outlet) return;
+  $('outlet-name').textContent = 'OUTLET: ' + outlet.name;
   loadList();
 })();
