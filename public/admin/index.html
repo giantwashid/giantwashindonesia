@@ -24,7 +24,7 @@
   <div class="container narrow">
     <h2>Login Karyawan</h2>
     <form id="login-form" class="form">
-      <input name="email" type="email" placeholder="Email" required autocomplete="username">
+      <input name="email" type="text" placeholder="Username atau email" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
       <input name="password" type="password" placeholder="Password" required autocomplete="current-password">
       <button class="btn" type="submit">Masuk</button>
       <p id="login-status" class="status"></p>
@@ -132,6 +132,7 @@
       <form class="form grid-form" data-table="employees">
         <input name="name" placeholder="Nama karyawan" required>
         <input name="position" placeholder="Jabatan">
+        <input name="username" placeholder="Username (untuk login)" autocapitalize="none">
         <input name="email" type="email" placeholder="Email login karyawan">
         <input name="base_salary" type="number" step="any" placeholder="Gaji pokok / bulan">
         <input name="diligence_bonus" type="number" step="any" placeholder="Uang kerajinan / bulan">

@@ -13,7 +13,7 @@ const COLS = {
   daily: [['date', 'Tanggal'], ['outlet', 'Outlet'], ['nota', 'Jumlah nota'], ['tunai', 'Tunai'], ['qris', 'QRIS'], ['transfer', 'Transfer'], ['total', 'Total'], ['check', 'Status cek'], ['check_note', 'Catatan selisih']],
   products: [['sort', 'Urutan'], ['name', 'Nama'], ['price', 'Harga 06:00-22:59'], ['price_night', 'Harga 23:00-05:59'], ['unit', 'Satuan'], ['note', 'Catatan']],
   maintenance: [['date', 'Tanggal'], ['machine', 'Mesin'], ['kind', 'Jenis'], ['description', 'Keterangan'], ['status', 'Status'], ['photo', 'Foto'], ['reported_by', 'Pelapor'], ['fixed_by', 'Dibereskan oleh']],
-  employees: [['name', 'Nama'], ['position', 'Jabatan'], ['email', 'Email login'], ['outlet_id', 'Outlet'], ['base_salary', 'Gaji pokok'], ['diligence_bonus', 'Uang kerajinan']],
+  employees: [['name', 'Nama'], ['position', 'Jabatan'], ['username', 'Username'], ['email', 'Email login'], ['outlet_id', 'Outlet'], ['base_salary', 'Gaji pokok'], ['diligence_bonus', 'Uang kerajinan']],
   payroll: [['name', 'Karyawan'], ['present', 'Masuk (hari)'], ['late', 'Telat (x)'], ['base_salary', 'Gaji pokok'], ['bonus_got', 'Uang kerajinan'], ['fine', 'Denda telat'], ['pay_total', 'Perkiraan gaji']],
   contacts: [['created_at', 'Waktu'], ['name', 'Nama'], ['email', 'Email'], ['phone', 'HP'], ['message', 'Pesan']],
 };
@@ -34,8 +34,15 @@ $('#login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = new FormData(e.target);
   $('#login-status').textContent = 'Memeriksa...';
-  const { error } = await sb.auth.signInWithPassword({ email: f.get('email'), password: f.get('password') });
-  $('#login-status').textContent = error ? 'Login gagal: email atau password salah.' : '';
+  const id = String(f.get('email')).trim();
+  let email = id;
+  if (!id.includes('@')) {
+    const { data } = await sb.rpc('login_email', { u: id });
+    if (!data) { $('#login-status').textContent = 'Username tidak ditemukan.'; return; }
+    email = data;
+  }
+  const { error } = await sb.auth.signInWithPassword({ email, password: f.get('password') });
+  $('#login-status').textContent = error ? 'Login gagal: username/email atau password salah.' : '';
 });
 $('#logout').addEventListener('click', () => sb.auth.signOut());
 
@@ -219,6 +226,7 @@ function render() {
     if (current === 'daily' && k === 'check' && !r.checked) return `<td><button class="chk" data-date="${r.date}" data-outlet="${r.outlet_id ?? ''}">Tandai sudah dicek</button></td>`;
     if (current === 'daily' && k === 'check_note' && !r.checked) return `<td><input class="chknote" data-key="${r.date}|${r.outlet_id ?? ''}" placeholder="Selisih / catatan"></td>`;
     if (current === 'employees' && k === 'outlet_id') return `<td><select class="inline" data-id="${r.id}" data-k="outlet_id" aria-label="Outlet"><option value="">Semua (pemilik)</option>${outlets.map((o) => `<option value="${o.id}"${o.id === v ? ' selected' : ''}>${esc(o.name)}</option>`).join('')}</select></td>`;
+    if (current === 'employees' && k === 'username') return `<td><input class="inline" type="text" data-id="${r.id}" data-k="username" value="${esc(v ?? '')}" aria-label="Username" autocapitalize="none"></td>`;
     if (current === 'employees' && (k === 'base_salary' || k === 'diligence_bonus')) return `<td><input class="inline" type="number" step="any" data-id="${r.id}" data-k="${k}" value="${esc(v ?? '')}" aria-label="${k}"></td>`;
     if (MONEY.includes(k)) return `<td class="num">${rupiah(v)}</td>`;
     if (k === 'photo_in' || k === 'photo_out' || k === 'photo') {
@@ -296,7 +304,7 @@ $('#export').addEventListener('click', () => {
 document.addEventListener('change', async (e) => {
   const inp = e.target;
   if (!inp.classList || !inp.classList.contains('inline')) return;
-  const { error } = await sb.from('employees').update({ [inp.dataset.k]: inp.value === '' ? null : Number(inp.value) }).eq('id', inp.dataset.id);
+  const { error } = await sb.from('employees').update({ [inp.dataset.k]: inp.value === '' ? null : inp.dataset.k === 'username' ? inp.value.trim().toLowerCase() : Number(inp.value) }).eq('id', inp.dataset.id);
   $('#app-status').textContent = error ? 'Gagal menyimpan: ' + error.message : 'Tersimpan.';
   if (!error) { await loadEmployees(); if (inp.dataset.k === 'outlet_id') load(); }
 });
