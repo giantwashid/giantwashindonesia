@@ -12,10 +12,14 @@ const COLS = {
   purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['created_by', 'Dicatat oleh'], ['note', 'Catatan']],
   products: [['sort', 'Urutan'], ['name', 'Nama'], ['price', 'Harga 06:00-22:59'], ['price_night', 'Harga 23:00-05:59'], ['unit', 'Satuan'], ['note', 'Catatan']],
   maintenance: [['date', 'Tanggal'], ['machine', 'Mesin'], ['kind', 'Jenis'], ['description', 'Keterangan'], ['status', 'Status'], ['photo', 'Foto'], ['reported_by', 'Pelapor'], ['fixed_by', 'Dibereskan oleh']],
-  employees: [['name', 'Nama'], ['position', 'Jabatan'], ['email', 'Email login']],
+  employees: [['name', 'Nama'], ['position', 'Jabatan'], ['email', 'Email login'], ['base_salary', 'Gaji pokok'], ['diligence_bonus', 'Uang kerajinan']],
+  payroll: [['name', 'Karyawan'], ['present', 'Masuk (hari)'], ['late', 'Telat (x)'], ['base_salary', 'Gaji pokok'], ['bonus_got', 'Uang kerajinan'], ['fine', 'Denda telat'], ['pay_total', 'Perkiraan gaji']],
   contacts: [['created_at', 'Waktu'], ['name', 'Nama'], ['email', 'Email'], ['phone', 'HP'], ['message', 'Pesan']],
 };
-const MONEY = ['price', 'price_night', 'total'];
+const MONEY = ['price', 'price_night', 'total', 'base_salary', 'diligence_bonus', 'bonus_got', 'fine', 'pay_total'];
+// Aturan KPI (sama dengan halaman absen): denda per telat, uang kerajinan hangus kalau telat > BATAS_TELAT.
+const DENDA_TELAT = 10000;
+const BATAS_TELAT = 3;
 let current = 'attendance';
 let employees = [];
 let lastRows = [];
@@ -77,9 +81,27 @@ function monthRange() {
   return [m + '-01', end.getFullYear() + '-' + String(end.getMonth() + 1).padStart(2, '0') + '-01'];
 }
 
+async function loadPayroll() {
+  const [from, to] = monthRange();
+  const { data, error } = await sb.from('attendance').select('employee_id,status').gte('date', from).lt('date', to);
+  if (error) { $('#app-status').textContent = 'Gagal memuat: ' + error.message; return; }
+  $('#app-status').textContent = '';
+  lastRows = employees.filter((e) => e.active).map((e) => {
+    const mine = (data || []).filter((r) => r.employee_id === e.id);
+    const late = mine.filter((r) => r.status === 'telat').length;
+    const present = mine.filter((r) => r.status === 'hadir' || r.status === 'telat').length;
+    const base = Number(e.base_salary || 0);
+    const bonusGot = late > BATAS_TELAT ? 0 : Number(e.diligence_bonus || 0);
+    const fine = late * DENDA_TELAT;
+    return { name: e.name, present, late, base_salary: base, bonus_got: bonusGot, fine, pay_total: base + bonusGot - fine };
+  });
+  render();
+}
+
 async function load() {
   const status = $('#app-status');
   status.textContent = 'Memuat...';
+  if (current === 'payroll') { await loadEmployees(); return loadPayroll(); }
   let q = sb.from(current).select('*');
   const [from, to] = monthRange();
   if (['attendance', 'sales', 'purchases', 'maintenance'].includes(current)) q = q.gte('date', from).lt('date', to).order('date', { ascending: false });
@@ -121,6 +143,7 @@ function render() {
   const body = lastRows.map((r) => '<tr>' + cols.map(([k]) => {
     let v = r[k];
     if (k === 'created_at') v = new Date(v).toLocaleString('id-ID');
+    if (current === 'employees' && (k === 'base_salary' || k === 'diligence_bonus')) return `<td><input class="inline" type="number" step="any" data-id="${r.id}" data-k="${k}" value="${esc(v ?? '')}" aria-label="${k}"></td>`;
     if (MONEY.includes(k)) return `<td class="num">${rupiah(v)}</td>`;
     if (k === 'photo_in' || k === 'photo_out' || k === 'photo') {
       const url = r[k + '_url'];
@@ -128,12 +151,15 @@ function render() {
     }
     if ((k === 'loc_in' || k === 'loc_out') && v) return `<td><a href="https://www.google.com/maps?q=${esc(v)}" target="_blank" rel="noopener">Lihat peta</a></td>`;
     return `<td>${esc(v)}</td>`;
-  }).join('') + `<td><button class="del" title="Hapus" data-id="${r.id}">✕</button></td></tr>`).join('');
+  }).join('') + (current === 'payroll' ? '<td></td>' : `<td><button class="del" title="Hapus" data-id="${r.id}">✕</button></td>`) + '</tr>').join('');
   $('#tbl-' + current).innerHTML = head + (body || `<tr><td colspan="${cols.length + 1}">Belum ada data di bulan ini.</td></tr>`);
 
   const sum = $('#sum-' + current);
   if (!sum) return;
-  if (current === 'maintenance') {
+  if (current === 'payroll') {
+    const total = lastRows.reduce((a, r) => a + r.pay_total, 0);
+    sum.innerHTML = `<div>Karyawan: <b>${lastRows.length}</b></div><div>Total perkiraan gaji: <b>${rupiah(total)}</b></div><div>Aturan: denda ${rupiah(DENDA_TELAT)}/telat, uang kerajinan hangus kalau telat lebih dari ${BATAS_TELAT}x</div>`;
+  } else if (current === 'maintenance') {
     const open = lastRows.filter((r) => r.status !== 'selesai').length;
     sum.innerHTML = `<div>Laporan: <b>${lastRows.length}</b></div><div>Belum beres: <b>${open}</b></div>`;
   } else if (current === 'attendance') {
@@ -183,4 +209,13 @@ $('#export').addEventListener('click', () => {
   a.href = URL.createObjectURL(blob);
   a.download = `laporan-${current}-${$('#month').value}.csv`;
   a.click();
+});
+
+// Ubah gaji pokok / uang kerajinan langsung dari tabel Karyawan.
+document.addEventListener('change', async (e) => {
+  const inp = e.target;
+  if (!inp.classList || !inp.classList.contains('inline')) return;
+  const { error } = await sb.from('employees').update({ [inp.dataset.k]: inp.value === '' ? null : Number(inp.value) }).eq('id', inp.dataset.id);
+  $('#app-status').textContent = error ? 'Gagal menyimpan: ' + error.message : 'Tersimpan.';
+  if (!error) await loadEmployees();
 });
