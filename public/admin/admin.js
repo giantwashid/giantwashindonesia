@@ -9,8 +9,9 @@ const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const COLS = {
   attendance: [['date', 'Tanggal'], ['employee', 'Karyawan'], ['check_in', 'Masuk'], ['check_out', 'Pulang'], ['status', 'Status'], ['photo_in', 'Foto masuk'], ['loc_in', 'Lokasi masuk'], ['photo_out', 'Foto pulang'], ['loc_out', 'Lokasi pulang'], ['note', 'Catatan']],
   sales: [['date', 'Tanggal'], ['invoice_no', 'No. Nota'], ['customer', 'Pelanggan'], ['item', 'Layanan/Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['payment_method', 'Bayar'], ['cashier', 'Kasir'], ['note', 'Catatan']],
-  purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['note', 'Catatan']],
+  purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['created_by', 'Dicatat oleh'], ['note', 'Catatan']],
   products: [['sort', 'Urutan'], ['name', 'Nama'], ['price', 'Harga 06:00-22:59'], ['price_night', 'Harga 23:00-05:59'], ['unit', 'Satuan'], ['note', 'Catatan']],
+  maintenance: [['date', 'Tanggal'], ['machine', 'Mesin'], ['kind', 'Jenis'], ['description', 'Keterangan'], ['status', 'Status'], ['photo', 'Foto'], ['reported_by', 'Pelapor'], ['fixed_by', 'Dibereskan oleh']],
   employees: [['name', 'Nama'], ['position', 'Jabatan'], ['email', 'Email login']],
   contacts: [['created_at', 'Waktu'], ['name', 'Nama'], ['email', 'Email'], ['phone', 'HP'], ['message', 'Pesan']],
 };
@@ -81,7 +82,7 @@ async function load() {
   status.textContent = 'Memuat...';
   let q = sb.from(current).select('*');
   const [from, to] = monthRange();
-  if (['attendance', 'sales', 'purchases'].includes(current)) q = q.gte('date', from).lt('date', to).order('date', { ascending: false });
+  if (['attendance', 'sales', 'purchases', 'maintenance'].includes(current)) q = q.gte('date', from).lt('date', to).order('date', { ascending: false });
   else if (current === 'contacts') q = q.gte('created_at', from).lt('created_at', to).order('created_at', { ascending: false });
   else if (current === 'products') q = q.order('sort').order('name');
   else q = q.order('name');
@@ -103,6 +104,14 @@ async function load() {
       lastRows.forEach((r) => { r.photo_in_url = map[r.photo_in]; r.photo_out_url = map[r.photo_out]; });
     }
   }
+  if (current === 'maintenance') {
+    const paths = lastRows.map((r) => r.photo).filter(Boolean);
+    if (paths.length) {
+      const { data: urls } = await sb.storage.from('maintenance-foto').createSignedUrls(paths, 3600);
+      const map = Object.fromEntries((urls || []).map((u) => [u.path, u.signedUrl]));
+      lastRows.forEach((r) => { r.photo_url = map[r.photo]; });
+    }
+  }
   render();
 }
 
@@ -113,7 +122,7 @@ function render() {
     let v = r[k];
     if (k === 'created_at') v = new Date(v).toLocaleString('id-ID');
     if (MONEY.includes(k)) return `<td class="num">${rupiah(v)}</td>`;
-    if (k === 'photo_in' || k === 'photo_out') {
+    if (k === 'photo_in' || k === 'photo_out' || k === 'photo') {
       const url = r[k + '_url'];
       return url ? `<td><a href="${esc(url)}" target="_blank" rel="noopener"><img class="thumb" src="${esc(url)}" alt="Foto"></a></td>` : '<td>-</td>';
     }
@@ -124,7 +133,10 @@ function render() {
 
   const sum = $('#sum-' + current);
   if (!sum) return;
-  if (current === 'attendance') {
+  if (current === 'maintenance') {
+    const open = lastRows.filter((r) => r.status !== 'selesai').length;
+    sum.innerHTML = `<div>Laporan: <b>${lastRows.length}</b></div><div>Belum beres: <b>${open}</b></div>`;
+  } else if (current === 'attendance') {
     const c = {};
     lastRows.forEach((r) => (c[r.status] = (c[r.status] || 0) + 1));
     sum.innerHTML = ['hadir', 'telat', 'izin', 'sakit', 'alpha', 'cuti'].map((s) => `<div>${s}: <b>${c[s] || 0}</b></div>`).join('');
