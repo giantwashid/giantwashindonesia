@@ -132,7 +132,7 @@ $('action').addEventListener('click', () => {
   $('home').classList.add('hidden');
   $('cam').classList.remove('hidden');
   $('meter').classList.toggle('hidden', !todayRow);
-  $('kwh').value = ''; $('gas').value = '';
+  $('kwh').value = ''; $('gas').value = ''; $('det').value = ''; $('sof').value = '';
   loadFaceModel();
   findLocation();
   startVideo();
@@ -167,7 +167,7 @@ $('cam-shot').addEventListener('click', async () => {
     $('cam-cancel').textContent = 'ULANGI';
     return;
   }
-  if (todayRow && ($('kwh').value === '' || $('gas').value === '')) { $('msg').textContent = 'Isi dulu sisa listrik (kWh) dan sisa gas (bar).'; return; }
+  if (todayRow && ['kwh', 'gas', 'det', 'sof'].some((k) => $(k).value === '')) { $('msg').textContent = 'Isi dulu sisa listrik, gas, deterjen dan softener.'; return; }
   if (!pos) { $('msg').textContent = 'Lokasi belum ditemukan. Tunggu sebentar, atau nyalakan GPS/Lokasi.'; findLocation(); return; }
   submit();
 });
@@ -188,7 +188,7 @@ async function submit() {
       photo_in: path, lat_in: pos.latitude, lng_in: pos.longitude,
     });
   } else {
-    res = await sb.from('attendance').update({ check_out: t, photo_out: path, lat_out: pos.latitude, lng_out: pos.longitude, electric_kwh: Number($('kwh').value), gas_bar: Number($('gas').value) }).eq('id', todayRow.id);
+    res = await sb.from('attendance').update({ check_out: t, photo_out: path, lat_out: pos.latitude, lng_out: pos.longitude, electric_kwh: Number($('kwh').value), gas_bar: Number($('gas').value), detergent_pcs: Number($('det').value), softener_pcs: Number($('sof').value) }).eq('id', todayRow.id);
   }
   btn.disabled = false;
   if (res.error) { $('msg').textContent = 'Gagal: ' + res.error.message; return; }
