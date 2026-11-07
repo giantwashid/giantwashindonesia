@@ -12,7 +12,7 @@ const COLS = {
   purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['created_by', 'Dicatat oleh'], ['note', 'Catatan']],
   products: [['sort', 'Urutan'], ['name', 'Nama'], ['price', 'Harga 06:00-22:59'], ['price_night', 'Harga 23:00-05:59'], ['unit', 'Satuan'], ['note', 'Catatan']],
   maintenance: [['date', 'Tanggal'], ['machine', 'Mesin'], ['kind', 'Jenis'], ['description', 'Keterangan'], ['status', 'Status'], ['photo', 'Foto'], ['reported_by', 'Pelapor'], ['fixed_by', 'Dibereskan oleh']],
-  employees: [['name', 'Nama'], ['position', 'Jabatan'], ['email', 'Email login'], ['base_salary', 'Gaji pokok'], ['diligence_bonus', 'Uang kerajinan']],
+  employees: [['name', 'Nama'], ['position', 'Jabatan'], ['email', 'Email login'], ['outlet_id', 'Outlet'], ['base_salary', 'Gaji pokok'], ['diligence_bonus', 'Uang kerajinan']],
   payroll: [['name', 'Karyawan'], ['present', 'Masuk (hari)'], ['late', 'Telat (x)'], ['base_salary', 'Gaji pokok'], ['bonus_got', 'Uang kerajinan'], ['fine', 'Denda telat'], ['pay_total', 'Perkiraan gaji']],
   contacts: [['created_at', 'Waktu'], ['name', 'Nama'], ['email', 'Email'], ['phone', 'HP'], ['message', 'Pesan']],
 };
@@ -21,6 +21,8 @@ const MONEY = ['price', 'price_night', 'total', 'base_salary', 'diligence_bonus'
 const DENDA_TELAT = 10000;
 const BATAS_TELAT = 3;
 let current = 'attendance';
+let outlets = [];
+let adminOutlet = null; // null = semua outlet
 let employees = [];
 let lastRows = [];
 
@@ -51,9 +53,29 @@ async function init() {
   const now = new Date();
   $('#month').value = now.toISOString().slice(0, 7);
   document.querySelectorAll('input[type=date]').forEach((i) => (i.value = now.toISOString().slice(0, 10)));
+  const { data: o } = await sb.from('outlets').select('*').eq('active', true).order('id');
+  outlets = o || [];
+  const ot = $('#otabs');
+  ot.innerHTML = outlets.map((x) => `<button data-outlet="${x.id}">${esc(x.name)}</button>`).join('') + '<button data-outlet="">Semua outlet</button>';
+  let saved = null;
+  try { saved = localStorage.getItem('gw-admin-outlet'); } catch (_) {}
+  setOutlet(saved !== null && (saved === '' || outlets.some((x) => String(x.id) === saved)) ? saved : String(outlets[0]?.id ?? ''));
   await loadEmployees();
   load();
 }
+
+function setOutlet(v) {
+  adminOutlet = v ? Number(v) : null;
+  document.querySelectorAll('#otabs button').forEach((b) => b.classList.toggle('active', b.dataset.outlet === (v || '')));
+  try { localStorage.setItem('gw-admin-outlet', v || ''); } catch (_) {}
+}
+$('#otabs').addEventListener('click', (e) => {
+  if (e.target.dataset.outlet === undefined) return;
+  setOutlet(e.target.dataset.outlet);
+  load();
+});
+// Karyawan yang masuk filter outlet yang sedang dibuka (tanpa outlet = pemilik, hanya di "Semua").
+const empInOutlet = (e) => adminOutlet === null || e.outlet_id === adminOutlet;
 
 $('#tabs').addEventListener('click', (e) => {
   const t = e.target.dataset.tab;
@@ -86,7 +108,7 @@ async function loadPayroll() {
   const { data, error } = await sb.from('attendance').select('employee_id,status').gte('date', from).lt('date', to);
   if (error) { $('#app-status').textContent = 'Gagal memuat: ' + error.message; return; }
   $('#app-status').textContent = '';
-  lastRows = employees.filter((e) => e.active).map((e) => {
+  lastRows = employees.filter((e) => e.active && empInOutlet(e)).map((e) => {
     const mine = (data || []).filter((r) => r.employee_id === e.id);
     const late = mine.filter((r) => r.status === 'telat').length;
     const present = mine.filter((r) => r.status === 'hadir' || r.status === 'telat').length;
@@ -105,6 +127,8 @@ async function load() {
   let q = sb.from(current).select('*');
   const [from, to] = monthRange();
   if (['attendance', 'sales', 'purchases', 'maintenance'].includes(current)) q = q.gte('date', from).lt('date', to).order('date', { ascending: false });
+  if (adminOutlet !== null && ['sales', 'purchases', 'maintenance'].includes(current)) q = q.eq('outlet_id', adminOutlet);
+  if (adminOutlet !== null && current === 'products') q = q.or(`outlet_id.eq.${adminOutlet},outlet_id.is.null`);
   else if (current === 'contacts') q = q.gte('created_at', from).lt('created_at', to).order('created_at', { ascending: false });
   else if (current === 'products') q = q.order('sort').order('name');
   else q = q.order('name');
@@ -112,7 +136,10 @@ async function load() {
   if (error) { status.textContent = 'Gagal memuat: ' + error.message; return; }
   status.textContent = '';
   const empName = Object.fromEntries(employees.map((e) => [e.id, e.name]));
-  lastRows = (data || []).map((r) => ({
+  let rows = data || [];
+  if (current === 'attendance') { const ok = new Set(employees.filter(empInOutlet).map((e) => e.id)); rows = rows.filter((r) => ok.has(r.employee_id)); }
+  if (current === 'employees') rows = rows.filter(empInOutlet);
+  lastRows = rows.map((r) => ({
     ...r,
     employee: empName[r.employee_id] || '',
     loc_in: r.lat_in != null ? `${r.lat_in},${r.lng_in}` : '',
@@ -143,6 +170,7 @@ function render() {
   const body = lastRows.map((r) => '<tr>' + cols.map(([k]) => {
     let v = r[k];
     if (k === 'created_at') v = new Date(v).toLocaleString('id-ID');
+    if (current === 'employees' && k === 'outlet_id') return `<td><select class="inline" data-id="${r.id}" data-k="outlet_id" aria-label="Outlet"><option value="">Semua (pemilik)</option>${outlets.map((o) => `<option value="${o.id}"${o.id === v ? ' selected' : ''}>${esc(o.name)}</option>`).join('')}</select></td>`;
     if (current === 'employees' && (k === 'base_salary' || k === 'diligence_bonus')) return `<td><input class="inline" type="number" step="any" data-id="${r.id}" data-k="${k}" value="${esc(v ?? '')}" aria-label="${k}"></td>`;
     if (MONEY.includes(k)) return `<td class="num">${rupiah(v)}</td>`;
     if (k === 'photo_in' || k === 'photo_out' || k === 'photo') {
@@ -188,6 +216,7 @@ document.querySelectorAll('form[data-table]').forEach((form) => {
     const table = form.dataset.table;
     const row = {};
     new FormData(form).forEach((v, k) => { if (v !== '') row[k] = v; });
+    if (adminOutlet !== null && ['sales', 'purchases', 'products', 'employees'].includes(table)) row.outlet_id = adminOutlet;
     const { error } = await sb.from(table).insert(row);
     if (error) return ($('#app-status').textContent = 'Gagal menyimpan: ' + error.message);
     const keepDate = form.querySelector('input[type=date]')?.value;
@@ -217,5 +246,5 @@ document.addEventListener('change', async (e) => {
   if (!inp.classList || !inp.classList.contains('inline')) return;
   const { error } = await sb.from('employees').update({ [inp.dataset.k]: inp.value === '' ? null : Number(inp.value) }).eq('id', inp.dataset.id);
   $('#app-status').textContent = error ? 'Gagal menyimpan: ' + error.message : 'Tersimpan.';
-  if (!error) await loadEmployees();
+  if (!error) { await loadEmployees(); if (inp.dataset.k === 'outlet_id') load(); }
 });
