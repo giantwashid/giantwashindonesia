@@ -34,11 +34,10 @@ $('login-form').addEventListener('submit', async (e) => {
   const { error } = await sb.auth.signInWithPassword({ email: f.get('email'), password: f.get('password') });
   $('login-msg').textContent = error ? 'Email atau password salah.' : '';
 });
-$('logout').addEventListener('click', () => sb.auth.signOut());
 $('logout2').addEventListener('click', () => sb.auth.signOut());
 
 sb.auth.onAuthStateChange((_e, session) => {
-  if (!session) { employee = null; show('login-view'); return; }
+  if (!session) { location.href = '/karyawan/'; return; }
   setTimeout(() => loadEmployee(session.user.email), 0);
 });
 
