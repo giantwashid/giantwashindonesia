@@ -65,20 +65,26 @@ async function init() {
   me = emp;
   const role = emp ? (emp.position || '') : '';
   canEdit = /owner|pemilik/i.test(role);
-  if (!canEdit && !/accounting|akuntan/i.test(role)) {
-    $('#app-view').innerHTML = '<div class="container"><h2>Tidak punya akses</h2><p>Panel Laporan hanya untuk pemilik dan accounting. Kembali ke <a href="/karyawan/">menu karyawan</a>.</p></div>';
+  const isSpv = /supervisor|spv/i.test(role);
+  if (!canEdit && !isSpv && !/accounting|akuntan/i.test(role)) {
+    $('#app-view').innerHTML = '<div class="container"><h2>Tidak punya akses</h2><p>Panel Laporan hanya untuk pemilik, supervisor dan accounting. Kembali ke <a href="/karyawan/">menu karyawan</a>.</p></div>';
     return;
   }
   document.body.classList.toggle('readonly', !canEdit);
+  if (isSpv) document.querySelector('#tabs [data-tab="payroll"]')?.remove(); // supervisor tidak melihat gaji
   const now = new Date();
   $('#month').value = now.toISOString().slice(0, 7);
   document.querySelectorAll('input[type=date]').forEach((i) => (i.value = now.toISOString().slice(0, 10)));
   const { data: o } = await sb.from('outlets').select('*').eq('active', true).order('id');
   outlets = o || [];
   const ot = $('#otabs');
-  ot.innerHTML = outlets.map((x) => `<button data-outlet="${x.id}">${esc(x.name)}</button>`).join('') + '<button data-outlet="">Semua outlet</button>';
+  // Supervisor / accounting yang punya outlet hanya bisa melihat outlet itu.
+  const lockOutlet = !canEdit && me && me.outlet_id ? me.outlet_id : null;
+  const shown = lockOutlet ? outlets.filter((x) => x.id === lockOutlet) : outlets;
+  ot.innerHTML = shown.map((x) => `<button data-outlet="${x.id}">${esc(x.name)}</button>`).join('') + (lockOutlet ? '' : '<button data-outlet="">Semua outlet</button>');
   let saved = null;
   try { saved = localStorage.getItem('gw-admin-outlet'); } catch (_) {}
+  if (lockOutlet) saved = String(lockOutlet);
   setOutlet(saved !== null && (saved === '' || outlets.some((x) => String(x.id) === saved)) ? saved : String(outlets[0]?.id ?? ''));
   await loadEmployees();
   load();
