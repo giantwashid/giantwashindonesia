@@ -31,6 +31,7 @@ async function load(email) {
   $('emp-name').textContent = data.name.split(' ')[0];
   const isOwner = /owner|pemilik|accounting|akuntan|supervisor|spv/i.test(data.position || '');
   $('owner-tile').classList.toggle('hidden', !isOwner);
+  document.querySelectorAll('.boss').forEach((t) => t.classList.toggle('hidden', !isOwner && !['owner', 'manager'].includes(data.role)));
   await setupOutlets(data);
   show('app-view');
 }
