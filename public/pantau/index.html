@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#ffd23f">
+<title>Pantau Tugas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&display=swap">
+<link rel="stylesheet" href="/absen/absen.css">
+<link rel="stylesheet" href="/karyawan/karyawan.css">
+<link rel="stylesheet" href="/tugas/tugas.css">
+</head>
+<body class="pantau-page">
+<main class="wrap">
+  <section id="app-view">
+    <div class="top">
+      <span class="hello">Pantau Tugas</span>
+      <a class="pill" href="/karyawan/">← Menu</a>
+    </div>
+    <span class="label" id="outlet-name"></span>
+    <div id="noaccess" class="card stack hidden"><p>Halaman ini khusus pemilik dan supervisor.</p></div>
+    <div id="board" class="hidden" style="display:flex;flex-direction:column;gap:18px">
+      <div class="kpis" id="kpis"></div>
+      <div class="card stack">
+        <span class="h">7 HARI TERAKHIR · klik baris untuk lihat foto & catatan</span>
+        <div class="tw"><table class="grid" id="week"></table></div>
+        <div class="legend">
+          <span><i class="dot d"></i>dikerjakan</span><span><i class="dot l"></i>terlambat / terlewat</span>
+          <span><i class="dot t"></i>batas hari ini</span><span><i class="dot n"></i>tidak dijadwalkan</span>
+          <span><b class="dotn">3</b>&nbsp;jumlah mesin dikerjakan</span>
+        </div>
+        <div id="detail" class="stack hidden"></div>
+      </div>
+      <div class="card stack">
+        <span class="h">KINERJA KARYAWAN · 30 HARI</span>
+        <div class="pics" id="pics"></div>
+        <p class="note" style="margin:0;color:var(--gray);font-size:13px">Persen = tugas selesai tepat waktu ÷ (tugas selesai + tugas yang sedang terlambat).</p>
+      </div>
+      <div class="card stack" id="settings-card">
+        <span class="h">PENGATURAN TUGAS · PIC, INTERVAL & BATAS</span>
+        <p style="margin:0;color:var(--gray);font-size:13px">Isi batas pertama. Setelah dikerjakan, batas berikutnya otomatis = tanggal selesai + interval.</p>
+        <div id="settings" class="stack setgrid"></div>
+      </div>
+    </div>
+    <p id="msg" class="msg"></p>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/karyawan/common.js"></script>
+<script src="/tugas/tugas-lib.js"></script>
+<script src="/pantau/pantau.js"></script>
+</body>
+</html>
