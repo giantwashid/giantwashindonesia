@@ -55,6 +55,7 @@ async function setupOutlets(emp) {
     return b;
   }));
   tabs.classList.remove('hidden');
+  $('outlet-label').classList.add('hidden'); // tombol outlet sudah menunjukkan outlet yang dipilih
   let saved = null;
   try { saved = Number(localStorage.getItem('gw-outlet')); } catch (_) {}
   pick(outlets.some((o) => o.id === saved) ? saved : (outlets[0] && outlets[0].id));
