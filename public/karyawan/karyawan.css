@@ -22,3 +22,7 @@ textarea { min-height: 84px; resize: vertical; }
 .otabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
 .otab { font: inherit; font-weight: 800; font-size: 15px; min-height: 48px; border: 3px solid var(--ink); border-radius: 14px; background: var(--white); color: var(--ink); cursor: pointer; padding: 6px 8px; }
 .otab.on { background: var(--orange); box-shadow: 3px 3px 0 var(--ink); }
+.otab b { display: block; font-weight: 800; }
+.oarea { display: block; font-size: 12px; font-weight: 600; color: var(--gray); margin-top: 2px; }
+.otab.on .oarea { color: var(--ink); }
+#outlet-label .oarea { text-transform: none; }

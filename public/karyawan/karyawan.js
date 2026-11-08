@@ -43,14 +43,16 @@ async function setupOutlets(emp) {
   const tabs = $('otabs');
   const pick = (id) => {
     const o = outlets.find((x) => x.id === id);
-    $('outlet-label').textContent = o ? 'OUTLET: ' + o.name : '';
+    $('outlet-label').replaceChildren(...(o ? [el('span', null, 'OUTLET: ' + o.name), ...(o.area ? [el('small', 'oarea', o.area)] : [])] : []));
     document.querySelectorAll('[data-page]').forEach((a) => { a.href = a.dataset.page + '?outlet=' + id; });
     tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.id) === id));
     try { localStorage.setItem('gw-outlet', String(id)); } catch (_) {}
   };
   if (emp.outlet_id) { tabs.classList.add('hidden'); pick(emp.outlet_id); return; }
   tabs.replaceChildren(...outlets.map((o) => {
-    const b = el('button', 'otab', o.name); b.type = 'button'; b.dataset.id = o.id;
+    const b = el('button', 'otab'); b.type = 'button'; b.dataset.id = o.id;
+    b.append(el('b', null, o.name)); // nama di atas, alamat di bawah
+    if (o.area) b.append(el('small', 'oarea', o.area));
     b.addEventListener('click', () => pick(o.id));
     return b;
   }));
