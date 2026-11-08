@@ -25,3 +25,8 @@ td.num { text-align: right; }
 .readonly input.inline, .readonly select.inline { pointer-events: none; border-color: transparent; background: transparent; }
 .chk { font: inherit; font-size: .85rem; padding: 6px 10px; border-radius: 8px; border: 1px solid #d5dde5; background: #fff; cursor: pointer; }
 .chknote { width: 170px; padding: 6px 8px; font: inherit; }
+
+/* Koreksi oleh accounting: tetap bisa diisi walau halaman read-only */
+input.fix, select.fix { font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid #b5b5b2; border-radius: 6px; background: #fff; min-width: 0; max-width: 160px; }
+input.fix.num { width: 110px; text-align: right; }
+input.fix:focus, select.fix:focus { outline: 2px solid #f97316; outline-offset: 1px; }

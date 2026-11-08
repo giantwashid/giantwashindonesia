@@ -8,8 +8,8 @@ const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 
 const COLS = {
   attendance: [['date', 'Tanggal'], ['employee', 'Karyawan'], ['check_in', 'Masuk'], ['check_out', 'Pulang'], ['status', 'Status'], ['electric_kwh', 'Sisa listrik (kWh)'], ['gas_bar', 'Sisa gas (bar)'], ['photo_in', 'Foto masuk'], ['loc_in', 'Lokasi masuk'], ['photo_out', 'Foto pulang'], ['loc_out', 'Lokasi pulang'], ['note', 'Catatan']],
-  sales: [['date', 'Tanggal'], ['invoice_no', 'No. Nota'], ['customer', 'Pelanggan'], ['item', 'Layanan/Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['payment_method', 'Bayar'], ['cashier', 'Kasir'], ['note', 'Catatan']],
-  purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['photo', 'Foto nota'], ['created_by', 'Dicatat oleh'], ['note', 'Catatan']],
+  sales: [['date', 'Tanggal'], ['invoice_no', 'No. Nota'], ['customer', 'Pelanggan'], ['item', 'Layanan/Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['payment_method', 'Bayar'], ['cashier', 'Kasir'], ['note', 'Catatan'], ['edited', 'Dikoreksi']],
+  purchases: [['date', 'Tanggal'], ['po_no', 'No. PO'], ['supplier', 'Supplier'], ['item', 'Barang'], ['qty', 'Qty'], ['price', 'Harga'], ['total', 'Total'], ['payment_method', 'Bayar'], ['photo', 'Foto nota'], ['created_by', 'Dicatat oleh'], ['note', 'Catatan'], ['edited', 'Dikoreksi']],
   daily: [['date', 'Tanggal'], ['outlet', 'Outlet'], ['nota', 'Jumlah nota'], ['tunai', 'Tunai'], ['qris', 'QRIS'], ['transfer', 'Transfer'], ['total', 'Total'], ['check', 'Status cek'], ['check_note', 'Catatan selisih']],
   products: [['sort', 'Urutan'], ['name', 'Nama'], ['price', 'Harga 06:00-22:59'], ['price_night', 'Harga 23:00-05:59'], ['unit', 'Satuan'], ['note', 'Catatan']],
   maintenance: [['date', 'Tanggal'], ['machine', 'Mesin'], ['kind', 'Jenis'], ['description', 'Keterangan'], ['status', 'Status'], ['photo', 'Foto'], ['reported_by', 'Pelapor'], ['fixed_by', 'Dibereskan oleh']],
@@ -26,6 +26,7 @@ let outlets = [];
 let adminOutlet = null; // null = semua outlet
 let me = null;        // data karyawan yang sedang login
 let canEdit = false;  // pemilik: boleh tambah/hapus/ubah. Accounting: hanya lihat + tandai sudah dicek.
+let canFix = false;   // pemilik + accounting: boleh koreksi total / cara bayar / catatan (selisih dengan mutasi rekening).
 let employees = [];
 let lastRows = [];
 
@@ -65,6 +66,7 @@ async function init() {
   me = emp;
   const role = emp ? (emp.position || '') : '';
   canEdit = /owner|pemilik/i.test(role);
+  canFix = canEdit || /accounting|akuntan/i.test(role);
   const isSpv = /supervisor|spv/i.test(role);
   if (!canEdit && !isSpv && !/accounting|akuntan/i.test(role)) {
     $('#app-view').innerHTML = '<div class="container"><h2>Tidak punya akses</h2><p>Panel Laporan hanya untuk pemilik, supervisor dan accounting. Kembali ke <a href="/karyawan/">menu karyawan</a>.</p></div>';
@@ -157,6 +159,7 @@ async function loadDaily() {
     ...d, nota: d.notas.size,
     check: d.checked ? `✓ ${d.checked.checked_by || ''}` : '',
     check_note: d.checked ? d.checked.note || '' : '',
+    check_id: d.checked ? d.checked.id : null,
   }));
   render();
 }
@@ -203,6 +206,9 @@ async function load() {
     employee: empName[r.employee_id] || '',
     loc_in: r.lat_in != null ? `${r.lat_in},${r.lng_in}` : '',
     loc_out: r.lat_out != null ? `${r.lat_out},${r.lng_out}` : '',
+    edited: r.edited_by ? `${r.edited_by} · ${new Date(r.edited_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+      + (r.orig_total != null && Number(r.orig_total) !== Number(r.total) ? ` · semula ${rupiah(r.orig_total)}` : '')
+      + (r.orig_payment && r.orig_payment !== r.payment_method ? ` · semula ${r.orig_payment}` : '') : '',
   }));
   if (current === 'attendance') {
     const paths = lastRows.flatMap((r) => [r.photo_in, r.photo_out]).filter(Boolean);
@@ -231,6 +237,10 @@ function render() {
     if (k === 'created_at') v = new Date(v).toLocaleString('id-ID');
     if (current === 'daily' && k === 'check' && !r.checked) return `<td><button class="chk" data-date="${r.date}" data-outlet="${r.outlet_id ?? ''}">Tandai sudah dicek</button></td>`;
     if (current === 'daily' && k === 'check_note' && !r.checked) return `<td><input class="chknote" data-key="${r.date}|${r.outlet_id ?? ''}" placeholder="Selisih / catatan"></td>`;
+    if (current === 'daily' && k === 'check_note' && r.checked && canFix) return `<td><input class="fix" data-check="${r.check_id}" value="${esc(v)}" placeholder="Selisih / catatan" aria-label="Catatan selisih"></td>`;
+    if (canFix && ['sales', 'purchases'].includes(current) && k === 'total') return `<td><input class="fix num" type="number" step="any" data-id="${r.id}" data-k="total" data-old="${esc(v ?? '')}" value="${esc(v ?? '')}" aria-label="Total"></td>`;
+    if (canFix && ['sales', 'purchases'].includes(current) && k === 'payment_method') return `<td><select class="fix" data-id="${r.id}" data-k="payment_method" data-old="${esc(v ?? '')}" aria-label="Cara bayar">${[...new Set(['', 'tunai', 'qris', 'transfer', v || ''])].map((m) => `<option value="${m}"${m === (v || '') ? ' selected' : ''}>${m || '-'}</option>`).join('')}</select></td>`;
+    if (canFix && ['sales', 'purchases'].includes(current) && k === 'note') return `<td><input class="fix" data-id="${r.id}" data-k="note" data-old="${esc(v ?? '')}" value="${esc(v ?? '')}" placeholder="Catatan" aria-label="Catatan"></td>`;
     if (current === 'employees' && k === 'outlet_id') return `<td><select class="inline" data-id="${r.id}" data-k="outlet_id" aria-label="Outlet"><option value="">Semua (pemilik)</option>${outlets.map((o) => `<option value="${o.id}"${o.id === v ? ' selected' : ''}>${esc(o.name)}</option>`).join('')}</select></td>`;
     if (current === 'employees' && k === 'username') return `<td><input class="inline" type="text" data-id="${r.id}" data-k="username" value="${esc(v ?? '')}" aria-label="Username" autocapitalize="none"></td>`;
     if (current === 'employees' && (k === 'base_salary' || k === 'diligence_bonus')) return `<td><input class="inline" type="number" step="any" data-id="${r.id}" data-k="${k}" value="${esc(v ?? '')}" aria-label="${k}"></td>`;
@@ -325,4 +335,26 @@ document.addEventListener('click', async (e) => {
   const { error } = await sb.from('daily_checks').insert({ date: b.dataset.date, outlet_id: b.dataset.outlet ? Number(b.dataset.outlet) : null, checked_by: me ? me.name : null, note });
   if (error) { $('#app-status').textContent = 'Gagal: ' + error.message; b.disabled = false; return; }
   load();
+});
+
+// Koreksi oleh accounting / pemilik kalau ada selisih dengan mutasi rekening.
+// Nilai semula disimpan sekali (orig_total / orig_payment), plus siapa dan kapan mengoreksi.
+document.addEventListener('change', async (e) => {
+  const inp = e.target;
+  if (!inp.classList || !inp.classList.contains('fix') || !canFix) return;
+  const st = $('#app-status');
+  if (inp.dataset.check) {
+    const { error } = await sb.from('daily_checks').update({ note: inp.value || null }).eq('id', inp.dataset.check);
+    st.textContent = error ? 'Gagal menyimpan: ' + error.message : 'Catatan selisih tersimpan.';
+    return;
+  }
+  const k = inp.dataset.k, id = inp.dataset.id;
+  const row = lastRows.find((r) => String(r.id) === id) || {};
+  const upd = { [k]: k === 'total' ? (inp.value === '' ? 0 : Number(inp.value)) : (inp.value || null), edited_by: me ? me.name : 'admin', edited_at: new Date().toISOString() };
+  if (k === 'total' && row.orig_total == null) upd.orig_total = Number(inp.dataset.old || 0);
+  if (k === 'payment_method' && row.orig_payment == null) upd.orig_payment = inp.dataset.old || '-';
+  if (k !== 'note' && !confirm(`Ubah ${k === 'total' ? 'total' : 'cara bayar'} jadi ${k === 'total' ? rupiah(upd.total) : upd[k] || '-'}? Nilai semula tetap tercatat.`)) { inp.value = inp.dataset.old; return; }
+  const { error } = await sb.from(current).update(upd).eq('id', id);
+  st.textContent = error ? 'Gagal menyimpan: ' + error.message : 'Koreksi tersimpan.';
+  if (!error) load();
 });
