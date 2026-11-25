@@ -1,0 +1,63 @@
+/* Menu karyawan - gaya sama dengan dashboard (desain 2 "Abu Hangat"). Hanya dipakai /karyawan/. */
+:root { --bg: #F0ECE4; --card: #ffffff; --soft: #F7F4EE; --line: #e3ddd1; --ink: #1a1a1a; --muted: #5a554d; --accent: #A50034; --dark: #1a1a1a; --gap: 0.3cm; }
+* { box-sizing: border-box; }
+body.menu-page { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: Manrope, system-ui, sans-serif; }
+.hidden { display: none !important; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 44px; }
+section { display: flex; flex-direction: column; gap: var(--gap); }
+.intro { display: flex; flex-direction: column; gap: 4px; }
+.eyebrow { font-size: 13px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--accent); }
+.hello { margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -0.8px; line-height: 1.15; }
+.sub { margin: 0; font-size: 15px; color: var(--muted); }
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 6px; }
+.label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+.section-label { margin-top: 10px; }
+.card { background: var(--card); border-radius: 22px; padding: 22px; }
+.pill { font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); background: var(--card); border: 1px solid #d6d0c4; border-radius: 999px; padding: 0 18px; min-height: 44px; cursor: pointer; }
+.pill:hover { border-color: var(--ink); }
+
+/* Login */
+#login-view, #nolink-view { max-width: 440px; margin: 6vh auto 0; }
+.form { display: flex; flex-direction: column; gap: 16px; }
+.form p { margin: 0; line-height: 1.5; }
+label { display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 14px; color: var(--muted); }
+input { font: inherit; font-size: 16px; color: var(--ink); background: var(--soft); border: 1px solid transparent; border-radius: 14px; padding: 13px 16px; }
+input:focus { outline: none; border-color: var(--accent); background: var(--card); }
+.btn { font: inherit; font-size: 16px; font-weight: 800; color: #ffffff; background: var(--accent); border: 0; border-radius: 999px; min-height: 52px; cursor: pointer; }
+.btn:hover { background: #8a002b; }
+.msg { margin: 0; min-height: 20px; font-weight: 700; font-size: 14px; text-align: center; color: var(--accent); }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Outlet */
+.outlet-card { display: flex; flex-direction: column; gap: 8px; }
+.outlet-name { font-size: 20px; font-weight: 800; }
+.outlet-name span { display: block; }
+.outlet-name .oarea, .otab .oarea { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-top: 2px; text-transform: none; }
+.otabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.otab { font: inherit; text-align: left; color: var(--ink); background: var(--soft); border: 2px solid transparent; border-radius: 16px; padding: 12px 16px; min-height: 56px; cursor: pointer; }
+.otab b { display: block; font-size: 16px; font-weight: 800; }
+.otab.on { background: var(--card); border-color: var(--accent); }
+.otab.on b { color: var(--accent); }
+
+/* Menu */
+.menu { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
+.tile { display: flex; align-items: center; gap: 16px; text-decoration: none; color: var(--ink); background: var(--card); border-radius: 22px; padding: 18px 20px; min-height: 88px; border: 2px solid transparent; transition: border-color .15s; }
+.tile:hover { border-color: var(--accent); }
+.ico { flex: none; width: 48px; height: 48px; border-radius: 14px; background: var(--soft); display: flex; align-items: center; justify-content: center; }
+.ico svg, .go svg { width: 24px; height: 24px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.txt b { font-size: 17px; font-weight: 800; }
+.txt span { font-size: 14px; color: var(--muted); font-weight: 500; }
+.go { flex: none; display: flex; }
+.go svg { width: 20px; height: 20px; stroke: #b8b0a2; }
+.tile.dark { background: var(--dark); color: #ffffff; }
+.tile.dark .ico { background: var(--accent); }
+.tile.dark .ico svg { stroke: #ffffff; }
+.tile.dark .txt span { color: #d6d0c4; }
+.tile.dark:hover { border-color: #ffffff; }
+
+@media (max-width: 640px) {
+  .wrap { padding: 24px 16px 36px; }
+  .hello { font-size: 28px; }
+  .menu { grid-template-columns: minmax(0, 1fr); }
+}

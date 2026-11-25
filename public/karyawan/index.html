@@ -4,51 +4,94 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#ffd23f">
+<meta name="theme-color" content="#F0ECE4">
 <title>Karyawan Giantwash</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&display=swap">
-<link rel="stylesheet" href="/absen/absen.css">
-<link rel="stylesheet" href="/karyawan/karyawan.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/karyawan/menu.css">
 </head>
-<body>
+<body class="menu-page">
 <main class="wrap">
 
   <section id="login-view" class="hidden">
-    <h1 class="hello">Karyawan Giantwash</h1>
-    <form id="login-form" class="card stack">
+    <div class="intro">
+      <span class="eyebrow">Giantwash</span>
+      <h1 class="hello">Masuk karyawan</h1>
+      <p class="sub">Pakai username dan password dari pemilik.</p>
+    </div>
+    <form id="login-form" class="card form">
       <label>Username atau email<input name="email" type="text" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
       <label>Password<input name="password" type="password" required autocomplete="current-password"></label>
-      <button class="btn" type="submit">MASUK</button>
-      <p id="login-msg" class="msg"></p>
+      <button class="btn" type="submit">Masuk</button>
+      <p id="login-msg" class="msg" role="status"></p>
     </form>
   </section>
 
   <section id="app-view" class="hidden">
     <div class="top">
-      <span class="hello">Halo, <span id="emp-name">...</span>!</span>
+      <div class="intro">
+        <span class="eyebrow">Giantwash</span>
+        <h1 class="hello">Halo, <span id="emp-name">...</span>!</h1>
+      </div>
       <button id="logout" class="pill" type="button">Keluar</button>
     </div>
-    <span class="label" id="outlet-label"></span>
-    <nav class="otabs hidden" id="otabs" aria-label="Pilih outlet"></nav>
-    <span class="label">MAU APA HARI INI?</span>
-    <nav class="menu">
-      <a class="tile" href="/absen/"><span class="num">1</span><div><b>Absensi</b><span>Absen masuk & pulang</span></div></a>
-      <a class="tile" data-page="/kasir/" href="/kasir/"><span class="num">2</span><div><b>Pendapatan</b><span>Kasir, catat penjualan</span></div></a>
-      <a class="tile" data-page="/pembelian/" href="/pembelian/"><span class="num">3</span><div><b>Pembelian</b><span>Catat belanja barang</span></div></a>
-      <a class="tile" data-page="/maintenance/" href="/maintenance/"><span class="num">4</span><div><b>Laporan Maintenance</b><span>Lapor mesin rusak / servis</span></div></a>
-      <a class="tile" data-page="/tugas/" href="/tugas/"><span class="num">5</span><div><b>Tugas Hari Ini</b><span>Kebersihan & perawatan mesin</span></div></a>
-      <a class="tile owner hidden boss" data-page="/pantau/" href="/pantau/"><span class="num">★</span><div><b>Pantau Tugas</b><span>Cek tugas karyawan, atur PIC</span></div></a>
-      <a class="tile" href="/dashboard/"><span class="num">6</span><div><b>Dashboard</b><span>Ringkasan penjualan & outlet</span></div></a>
-      <a class="tile owner hidden" id="owner-tile" href="/admin/"><span class="num">★</span><div><b>Panel Laporan</b><span>Khusus pemilik</span></div></a>
+
+    <div class="card outlet-card">
+      <span class="label">Outlet</span>
+      <span id="outlet-label" class="outlet-name"></span>
+      <nav class="otabs hidden" id="otabs" aria-label="Pilih outlet"></nav>
+    </div>
+
+    <span class="label section-label">Mau apa hari ini?</span>
+    <nav class="menu" aria-label="Menu karyawan">
+      <a class="tile" href="/absen/">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+        <span class="txt"><b>Absensi</b><span>Absen masuk &amp; pulang</span></span>
+        <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+      </a>
+      <a class="tile" data-page="/kasir/" href="/kasir/">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"></rect><circle cx="12" cy="12" r="2.5"></circle><path d="M6 9v.01M18 15v.01"></path></svg></span>
+        <span class="txt"><b>Pendapatan</b><span>Kasir, catat penjualan</span></span>
+        <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+      </a>
+      <a class="tile" data-page="/pembelian/" href="/pembelian/">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h11l2-8H6.2"></path><circle cx="9" cy="19.5" r="1.5"></circle><circle cx="17" cy="19.5" r="1.5"></circle></svg></span>
+        <span class="txt"><b>Pembelian</b><span>Catat belanja barang</span></span>
+        <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+      </a>
+      <a class="tile" data-page="/maintenance/" href="/maintenance/">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"></path></svg></span>
+        <span class="txt"><b>Laporan Maintenance</b><span>Lapor mesin rusak / servis</span></span>
+        <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+      </a>
+      <a class="tile" data-page="/tugas/" href="/tugas/">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"></path><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"></path></svg></span>
+        <span class="txt"><b>Tugas Hari Ini</b><span>Kebersihan &amp; perawatan mesin</span></span>
+        <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+      </a>
+      <a class="tile boss hidden" data-page="/pantau/" href="/pantau/">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
+        <span class="txt"><b>Pantau Tugas</b><span>Cek tugas karyawan, atur PIC</span></span>
+        <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+      </a>
+      <a class="tile dark boss hidden" href="/dashboard/">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg></span>
+        <span class="txt"><b>Dashboard</b><span>Ringkasan penjualan &amp; laba rugi</span></span>
+        <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+      </a>
+      <a class="tile hidden" id="owner-tile" href="/admin/">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5M9 13h6M9 17h6"></path></svg></span>
+        <span class="txt"><b>Panel Laporan</b><span>Khusus pemilik</span></span>
+        <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+      </a>
     </nav>
   </section>
 
   <section id="nolink-view" class="hidden">
-    <div class="card stack">
+    <div class="card form">
       <h1 class="hello">Akun belum terdaftar</h1>
       <p>Email <b id="nolink-email"></b> belum ada di data karyawan. Minta pemilik toko menambahkan email ini di Panel Laporan, menu Karyawan.</p>
-      <button id="logout2" class="btn" type="button">KELUAR</button>
+      <button id="logout2" class="btn" type="button">Keluar</button>
     </div>
   </section>
 

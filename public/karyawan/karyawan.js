@@ -43,7 +43,7 @@ async function setupOutlets(emp) {
   const tabs = $('otabs');
   const pick = (id) => {
     const o = outlets.find((x) => x.id === id);
-    $('outlet-label').replaceChildren(...(o ? [el('span', null, 'OUTLET: ' + o.name), ...(o.area ? [el('small', 'oarea', o.area)] : [])] : []));
+    $('outlet-label').replaceChildren(...(o ? [el('span', null, o.name), ...(o.area ? [el('small', 'oarea', o.area)] : [])] : []));
     document.querySelectorAll('[data-page]').forEach((a) => { a.href = a.dataset.page + '?outlet=' + id; });
     tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.id) === id));
     try { localStorage.setItem('gw-outlet', String(id)); } catch (_) {}
