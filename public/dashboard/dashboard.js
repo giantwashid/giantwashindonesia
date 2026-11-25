@@ -24,14 +24,21 @@ let me = null, outlets = [], outlet = null, period = 'month', isRows = [], isPer
   outlets = data || [];
   const shown = !isOwner(me) && me.outlet_id ? outlets.filter((o) => o.id === me.outlet_id) : outlets;
   if (!shown.length) { $('noaccess').classList.remove('hidden'); return; }
-  $('osel').replaceChildren(...shown.map((o) => { const x = el('option', '', o.name); x.value = o.id; return x; }));
-  $('osel').disabled = shown.length < 2;
+  // "Semua outlet" untuk owner dan manager tanpa outlet.
+  const canAll = isOwner(me) || !me.outlet_id;
+  const opts = [...(canAll && shown.length > 1 ? [{ id: 'all', name: 'Semua outlet' }] : []), ...shown];
+  $('osel').replaceChildren(...opts.map((o) => { const x = el('option', '', o.name); x.value = o.id; return x; }));
+  $('osel').disabled = opts.length < 2;
+  const parse = (v) => (v === 'all' ? 'all' : Number(v));
+  const valid = (v) => opts.some((o) => String(o.id) === String(v));
   let saved = null;
-  try { saved = Number(localStorage.getItem('gw-dash-outlet')); } catch (_) {}
-  outlet = shown.some((o) => o.id === saved) ? saved : shown[0].id;
+  try { saved = localStorage.getItem('gw-dash-outlet'); } catch (_) {}
+  const want = new URLSearchParams(location.search).get('outlet');
+  outlet = valid(want) ? parse(want) : valid(saved) ? parse(saved) : opts[0].id;
   $('osel').addEventListener('change', (e) => {
-    outlet = Number(e.target.value);
+    outlet = parse(e.target.value);
     try { localStorage.setItem('gw-dash-outlet', String(outlet)); } catch (_) {}
+    try { history.replaceState(null, '', '?outlet=' + outlet); } catch (_) {}
     isPeriod = null;
     load();
   });
@@ -54,7 +61,20 @@ function range() {
   return { from, to, len, pfrom: addDays(from, -len), pto: from };
 }
 
-const scope = (q) => q.eq('outlet_id', outlet).eq('is_void', false);
+const scope = (q) => (outlet === 'all' ? q : q.eq('outlet_id', outlet)).eq('is_void', false);
+
+// Laba rugi gabungan untuk "Semua outlet": jumlahkan angka per periode dan pos.
+function combineIncome(rows) {
+  const by = {};
+  rows.forEach((x) => {
+    const k = x.period + '|' + x.line_item;
+    const c = by[k] || (by[k] = { period: x.period, line_item: x.line_item, amount: null, sort: x.sort, updated_at: x.updated_at });
+    if (x.amount != null) c.amount = (c.amount || 0) + Number(x.amount);
+    if (x.sort < c.sort) c.sort = x.sort;
+    if (x.updated_at > c.updated_at) c.updated_at = x.updated_at;
+  });
+  return Object.values(by).map((c) => (/margin/i.test(c.line_item) ? { ...c, amount: null } : c));
+}
 // Supabase mengirim maks 1000 baris sekali minta, jadi ambil per halaman.
 async function all(make) {
   const out = [];
@@ -70,7 +90,9 @@ async function all(make) {
 async function load() {
   $('osel').value = String(outlet);
   $('psel').value = period;
-  const o = outlets.find((x) => x.id === outlet) || {};
+  const o = outlet === 'all'
+    ? { name: 'Semua Outlet', input_source: outlets.some((x) => x.input_source === 'sheet') ? 'sheet' : 'website' }
+    : outlets.find((x) => x.id === outlet) || {};
   $('oname').textContent = o.name || 'Dashboard';
   const r = range();
   const F = iso(r.from), T = iso(r.to), PF = iso(r.pfrom), PT = iso(r.pto);
@@ -84,14 +106,14 @@ async function load() {
     all(() => scope(sb.from('purchases').select('date,item,total,expense_type').gte('date', F).lt('date', T)).order('id')),
     all(() => scope(sb.from('purchases').select('total').gte('date', PF).lt('date', PT)).order('id')),
     all(() => scope(sb.from('sales').select('date,total').gte('date', iso(t0)).lt('date', iso(t1))).order('id')),
-    sb.from('income_statement').select('period,line_item,amount,sort,updated_at').eq('outlet_id', outlet).order('sort'),
+    (outlet === 'all' ? sb.from('income_statement').select('period,line_item,amount,sort,updated_at') : sb.from('income_statement').select('period,line_item,amount,sort,updated_at').eq('outlet_id', outlet)).order('sort'),
     o.input_source === 'sheet' ? sb.from('sync_log').select('ran_at,status').order('id', { ascending: false }).limit(1) : Promise.resolve({ data: [] }),
   ]);
   const err = [s, ps, p, pp, tr, inc, lg].find((x) => x.error);
   $('status').textContent = err ? 'Sebagian data gagal dimuat: ' + err.error.message : '';
   syncLine(o, (lg.data || [])[0]);
   const sales = s.data || [], purch = p.data || [];
-  isRows = inc.data || [];
+  isRows = outlet === 'all' ? combineIncome(inc.data || []) : inc.data || [];
   kpis(sales, ps.data || [], purch, pp.data || []);
   trend(tr.data || [], t0);
   costs(purch, sales);
