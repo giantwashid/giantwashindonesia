@@ -19,8 +19,8 @@
   </div>
 
   <div id="noaccess" class="card hidden">
-    <b>Belum ada outlet untuk akun ini.</b>
-    <p>Minta pemilik mengisi kolom Outlet untuk akun Anda di Panel Laporan, tab Karyawan.</p>
+    <b>Dashboard khusus owner dan manager.</b>
+    <p>Kalau Anda manager, minta pemilik mengisi peran dan outlet akun Anda di Panel Laporan, tab Karyawan.</p>
   </div>
 
   <div id="board" class="hidden">
@@ -35,6 +35,7 @@
       </select></label>
     </div>
     <p id="range" class="range"></p>
+    <p id="sync" class="range"></p>
     <p id="status" class="range"></p>
 
     <section class="kpis" id="kpis"></section>
@@ -62,17 +63,17 @@
         <div id="costs" class="hbars"></div>
       </div>
       <div class="card">
-        <h2>Stok</h2>
-        <div id="meters"></div>
-        <p class="note">Dari isian absen pulang terakhir. Deterjen & softener maks 300 pcs, di bawah 100 harus beli.</p>
+        <h2>Kanal penjualan</h2>
+        <div id="channels" class="hbars"></div>
+        <p class="note">Dari awalan nomor nota (MXMG = mesin Maxpress).</p>
       </div>
-      <div class="card">
-        <h2>Absensi</h2>
-        <div id="attend"></div>
-      </div>
-      <div class="card">
-        <h2>Mesin belum beres</h2>
-        <div id="machines"></div>
+      <div class="card wide">
+        <div class="cardhead">
+          <h2>Laba rugi</h2>
+          <label class="sel mini">Periode laporan<select id="isel"></select></label>
+        </div>
+        <div id="income"></div>
+        <p class="note" id="income-note"></p>
       </div>
     </section>
   </div>

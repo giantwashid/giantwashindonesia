@@ -1,43 +1,41 @@
-// Dashboard outlet: ringkasan penjualan, biaya, stok listrik/gas, absensi dan mesin.
-// Pemilik melihat semua outlet. Karyawan/PIC/supervisor yang punya outlet hanya melihat outlet itu.
+// Dashboard per outlet: penjualan, biaya, kanal, dan laba rugi (dari Google Sheet accounting).
+// Hanya owner dan manager. Owner (atau manager tanpa outlet) memilih outlet; manager yang punya outlet hanya melihat outletnya.
+// Baris yang ditandai batal (is_void) tidak dihitung.
 const HARI = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const fmtD = (s) => { const d = new Date(s + 'T00:00:00'); return `${d.getDate()} ${BULAN[d.getMonth()]}`; };
 const num = (n) => Math.round(Number(n) || 0).toLocaleString('id-ID');
-const short = (n) => { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' jt' : n >= 1e3 ? Math.round(n / 1e3) + ' rb' : String(Math.round(n)); };
+const short = (n) => { n = Number(n) || 0; const a = Math.abs(n), s = n < 0 ? '−' : ''; return s + (a >= 1e6 ? (a / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + ' jt' : a >= 1e3 ? Math.round(a / 1e3) + ' rb' : String(Math.round(a))); };
+const money = (n) => (n < 0 ? '(' + rp(-n) + ')' : rp(n));
+// Akses memakai kolom peran (role), sama dengan aturan database. Jabatan (position) tidak dipakai.
+const isOwner = (e) => e.role === 'owner';
 
-let me = null, outlets = [], outlet = null, period = 'month', locked = false, emps = [];
+let me = null, outlets = [], outlet = null, period = 'month', isRows = [], isPeriod = null;
 
 (async () => {
   me = await requireEmployee();
   if (!me) return;
-  const role = me.position || '';
-  const owner = /owner|pemilik/i.test(role);
-  const seesAll = owner || (!me.outlet_id && /accounting|akuntan|supervisor|spv/i.test(role));
+  if (!isOwner(me) && me.role !== 'manager') { $('noaccess').classList.remove('hidden'); return; }
   const { data } = await sb.from('outlets').select('*').eq('active', true).order('id');
   outlets = data || [];
-  if (!seesAll && !me.outlet_id) { $('noaccess').classList.remove('hidden'); return; }
-  locked = !seesAll;
-  const shown = locked ? outlets.filter((o) => o.id === me.outlet_id) : outlets;
-  const tabs = shown.map((o) => ({ id: o.id, name: o.name }));
-  if (!locked) tabs.push({ id: null, name: 'Semua outlet' });
-  $('osel').replaceChildren(...tabs.map((t) => { const o = el('option', '', t.name); o.value = t.id ?? ''; return o; }));
-  $('osel').disabled = locked;
+  // Manager yang terdaftar di satu outlet hanya melihat outlet itu.
+  const shown = !isOwner(me) && me.outlet_id ? outlets.filter((o) => o.id === me.outlet_id) : outlets;
+  if (!shown.length) { $('noaccess').classList.remove('hidden'); return; }
+  $('osel').replaceChildren(...shown.map((o) => { const x = el('option', '', o.name); x.value = o.id; return x; }));
+  $('osel').disabled = shown.length < 2;
   let saved = null;
-  try { saved = localStorage.getItem('gw-dash-outlet'); } catch (_) {}
-  outlet = locked ? me.outlet_id : (saved === '' ? null : tabs.some((t) => String(t.id) === saved) ? Number(saved) : tabs[0].id);
+  try { saved = Number(localStorage.getItem('gw-dash-outlet')); } catch (_) {}
+  outlet = shown.some((o) => o.id === saved) ? saved : shown[0].id;
   $('osel').addEventListener('change', (e) => {
-    if (locked) return;
-    const o = e.target.value;
-    outlet = o === '' ? null : Number(o);
-    try { localStorage.setItem('gw-dash-outlet', o); } catch (_) {}
+    outlet = Number(e.target.value);
+    try { localStorage.setItem('gw-dash-outlet', String(outlet)); } catch (_) {}
+    isPeriod = null;
     load();
   });
   $('psel').addEventListener('change', (e) => { period = e.target.value; load(); });
-  const { data: em } = await sb.from('employees').select('id,name,outlet_id,active');
-  emps = em || [];
+  $('isel').addEventListener('change', (e) => { isPeriod = e.target.value; income(); });
   $('board').classList.remove('hidden');
   load();
 })();
@@ -54,7 +52,7 @@ function range() {
   return { from, to, len, pfrom: addDays(from, -len), pto: from };
 }
 
-const scope = (q) => (outlet === null ? q : q.eq('outlet_id', outlet));
+const scope = (q) => q.eq('outlet_id', outlet).eq('is_void', false);
 // Supabase mengirim maks 1000 baris sekali minta, jadi ambil per halaman.
 async function all(make) {
   const out = [];
@@ -68,34 +66,44 @@ async function all(make) {
 }
 
 async function load() {
-  $('osel').value = String(outlet ?? '');
+  $('osel').value = String(outlet);
   $('psel').value = period;
+  const o = outlets.find((x) => x.id === outlet) || {};
   const r = range();
   const F = iso(r.from), T = iso(r.to), PF = iso(r.pfrom), PT = iso(r.pto);
   $('range').textContent = `${fmtD(F)} – ${fmtD(iso(addDays(r.to, -1)))} ${r.from.getFullYear()} · dibanding ${r.len} hari sebelumnya`;
   $('status').textContent = 'Memuat...';
-  const empIds = emps.filter((e) => outlet === null || e.outlet_id === outlet).map((e) => e.id);
-  const [s, ps, p, pp, a, m, met] = await Promise.all([
+  const [s, ps, p, pp, inc, lg] = await Promise.all([
     all(() => scope(sb.from('sales').select('date,invoice_no,item,qty,total,payment_method,note,created_at').gte('date', F).lt('date', T)).order('id')),
     all(() => scope(sb.from('sales').select('invoice_no,total').gte('date', PF).lt('date', PT)).order('id')),
     all(() => scope(sb.from('purchases').select('date,item,total,expense_type').gte('date', F).lt('date', T)).order('id')),
     all(() => scope(sb.from('purchases').select('total').gte('date', PF).lt('date', PT)).order('id')),
-    sb.from('attendance').select('employee_id,date,status').gte('date', F).lt('date', T).in('employee_id', empIds.length ? empIds : [-1]),
-    scope(sb.from('maintenance').select('*').neq('status', 'selesai')).order('date', { ascending: false }).limit(20),
-    sb.from('attendance').select('employee_id,date,check_out,electric_kwh,gas_bar,detergent_pcs,softener_pcs').not('electric_kwh', 'is', null).in('employee_id', empIds.length ? empIds : [-1]).order('date', { ascending: false }).limit(60),
+    sb.from('income_statement').select('period,line_item,amount,sort,updated_at').eq('outlet_id', outlet).order('sort'),
+    o.input_source === 'sheet' ? sb.from('sync_log').select('ran_at,status').order('id', { ascending: false }).limit(1) : Promise.resolve({ data: [] }),
   ]);
-  const err = [s, ps, p, pp, a, m, met].find((x) => x.error);
+  const err = [s, ps, p, pp, inc, lg].find((x) => x.error);
   $('status').textContent = err ? 'Sebagian data gagal dimuat: ' + err.error.message : '';
+  syncLine(o, (lg.data || [])[0]);
   const sales = s.data || [], purch = p.data || [];
-  kpis(sales, ps.data || [], purch, pp.data || [], m.data || []);
+  isRows = inc.data || [];
+  kpis(sales, ps.data || [], purch, pp.data || []);
   daily(sales, r);
   payments(sales);
   products(sales);
   hours(sales);
   costs(purch);
-  meters(met.data || []);
-  attend(a.data || []);
-  machines(m.data || []);
+  channels(sales, o);
+  incomePeriods();
+  income();
+}
+
+function syncLine(o, last) {
+  const box = $('sync');
+  if (o.input_source !== 'sheet') { box.textContent = ''; return; }
+  if (!last) { box.textContent = 'Data dari Google Sheet accounting · belum ada catatan sinkron.'; return; }
+  const d = new Date(last.ran_at);
+  const when = `${d.getDate()} ${BULAN[d.getMonth()]} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  box.textContent = `Data dari Google Sheet accounting · sinkron terakhir ${when}` + (last.status === 'ok' ? '' : ` (${last.status})`);
 }
 
 const sum = (rows) => rows.reduce((t, x) => t + Number(x.total || 0), 0);
@@ -106,18 +114,26 @@ function delta(now, before) {
   return `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs periode lalu`;
 }
 
-function kpis(sales, psales, purch, ppurch, mach) {
+// Laba bersih bulan berjalan dari laporan laba rugi accounting.
+function netThisMonth() {
+  const m = iso(new Date()).slice(0, 7);
+  const row = isRows.find((x) => x.period === m && /^net profit/i.test(x.line_item));
+  return row && row.amount != null ? Number(row.amount) : null;
+}
+
+function kpis(sales, psales, purch, ppurch) {
   const S = sum(sales), PS = sum(psales), N = inv(sales), PN = inv(psales), C = sum(purch), PC = sum(ppurch);
+  const net = netThisMonth();
   const items = [
     ['Penjualan', rp(S), delta(S, PS)],
     ['Jumlah nota', num(N), delta(N, PN)],
     ['Rata-rata per nota', rp(N ? S / N : 0), N ? 'per transaksi' : '–'],
     ['Biaya / pembelian', rp(C), delta(C, PC)],
     ['Penjualan − biaya', (S - C < 0 ? '−' : '') + rp(Math.abs(S - C)), 'sebelum gaji'],
-    ['Mesin belum beres', num(mach.length), mach.length ? 'cek daftar di bawah' : 'semua aman'],
+    ['Laba bersih bulan ini', net == null ? '–' : (net < 0 ? '−' : '') + rp(Math.abs(net)), net == null ? 'belum ada laporan laba rugi' : 'dari laporan accounting'],
   ];
   $('kpis').replaceChildren(...items.map(([k, v, d], i) => {
-    const c = el('div', 'kpi' + (i === 0 ? ' hero' : '') + (i === 5 && mach.length ? ' alert' : ''));
+    const c = el('div', 'kpi' + (i === 0 ? ' hero' : '') + (i === 5 && net != null && net < 0 ? ' alert' : ''));
     c.append(el('span', 'k', k), el('span', 'v', v), el('span', 'd', d)); return c;
   }));
 }
@@ -127,7 +143,7 @@ function bars(box, list, fmt, axis) {
   const max = Math.max(1, ...list.map((x) => x.v));
   box.replaceChildren(...list.map((x) => {
     const b = el('div', x.v === max && x.v > 0 ? 'b peak' : 'b'); b.tabIndex = 0; b.dataset.tip = `${x.label}: ${fmt(x.v)}`;
-    const i = el('i'); i.style.height = (x.v / max) * 100 + '%'; b.append(i); return b;
+    const i = el('i'); i.style.height = (Math.max(0, x.v) / max) * 100 + '%'; b.append(i); return b;
   }));
   const ax = box.nextElementSibling && box.nextElementSibling.classList.contains('axis') ? box.nextElementSibling : el('div', 'axis');
   ax.replaceChildren(...axis.map((t) => el('span', '', t)));
@@ -147,7 +163,7 @@ function hbars(box, list, fmt, empty) {
   if (!list.length) { box.replaceChildren(el('p', 'empty', empty)); return; }
   const max = Math.max(1, ...list.map((x) => x.v));
   box.replaceChildren(...list.map((x) => {
-    const r = el('div', 'hb'); const t = el('div', 't'); const i = el('i'); i.style.width = (x.v / max) * 100 + '%'; t.append(i);
+    const r = el('div', 'hb'); const t = el('div', 't'); const i = el('i'); i.style.width = (Math.max(0, x.v) / max) * 100 + '%'; t.append(i);
     r.append(el('span', 'n', x.label), t, el('span', 'v', fmt(x))); r.title = x.label; return r;
   }));
 }
@@ -164,6 +180,16 @@ function products(sales) {
   const by = {}; sales.forEach((x) => { const k = x.item; by[k] = by[k] || { v: 0, q: 0 }; by[k].v += Number(x.total || 0); by[k].q += Number(x.qty || 0); });
   hbars($('products'), Object.entries(by).sort((a, b) => b[1].v - a[1].v).slice(0, 8).map(([k, o]) => ({ label: k, v: o.v, q: o.q })),
     (x) => `${short(x.v)} · ${num(x.q)}x`, 'Belum ada penjualan.');
+}
+
+// Kanal dari awalan nomor nota: MXMG = mesin Maxpress, lainnya = kasir outlet.
+function channels(sales, o) {
+  const name = (pre) => (pre === 'MXMG' ? 'Mesin Maxpress' : pre === 'KLMG' || pre === '' ? `Kasir ${o.name || ''}`.trim() : pre);
+  const by = {};
+  sales.forEach((x) => { const pre = String(x.invoice_no || '').split('/')[0].toUpperCase(); const k = name(pre); by[k] = (by[k] || 0) + Number(x.total || 0); });
+  const tot = Object.values(by).reduce((a, b) => a + b, 0);
+  hbars($('channels'), Object.entries(by).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ label: k, v })),
+    (x) => `${short(x.v)} · ${tot ? Math.round((x.v / tot) * 100) : 0}%`, 'Belum ada penjualan.');
 }
 
 // Jam transaksi: dari catatan "Jam hh:mm", nomor nota (…-hhmmss), atau waktu input.
@@ -183,64 +209,52 @@ function costs(purch) {
   hbars($('costs'), Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => ({ label: k, v })), (x) => short(x.v), 'Belum ada biaya di periode ini.');
 }
 
-// Meteran bulat: gas & listrik dibanding isian tertinggi yang pernah dicatat, deterjen & softener maks 300 pcs.
-function gauge(label, val, unit, max, low, lowText) {
-  const g = el('div', 'gauge');
-  if (val == null) { g.append(el('span', 's', '–'), el('span', '', label), el('span', 's', 'belum diisi')); return g; }
-  const pct = Math.max(0, Math.min(1, max ? val / max : 0)), r = 40, c = 2 * Math.PI * r;
-  const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', `${label} ${val} ${unit}`);
-  const ring = (color, dash) => { const k = document.createElementNS(ns, 'circle'); k.setAttribute('cx', 50); k.setAttribute('cy', 50); k.setAttribute('r', r); k.setAttribute('fill', 'none'); k.setAttribute('stroke', color); k.setAttribute('stroke-width', 12); if (dash) { k.setAttribute('stroke-dasharray', `${dash} ${c}`); k.setAttribute('stroke-linecap', 'round'); k.setAttribute('transform', 'rotate(-90 50 50)'); } return k; };
-  const t = document.createElementNS(ns, 'text'); t.setAttribute('x', 50); t.setAttribute('y', 52); t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', 17); t.setAttribute('font-weight', 900); t.setAttribute('fill', '#3d3d3d'); t.setAttribute('font-family', 'Archivo, sans-serif'); t.textContent = Number(val).toLocaleString('id-ID');
-  const u = document.createElementNS(ns, 'text'); u.setAttribute('x', 50); u.setAttribute('y', 68); u.setAttribute('text-anchor', 'middle'); u.setAttribute('font-size', 11); u.setAttribute('font-weight', 700); u.setAttribute('fill', '#737373'); u.setAttribute('font-family', 'Archivo, sans-serif'); u.textContent = unit;
-  svg.append(ring('#ececea'), ...(pct > 0 ? [ring(low ? '#f97316' : '#ffc21a', Math.max(1, pct * c))] : []), t, u);
-  g.append(svg, el('span', '', label), el('span', low ? 's low' : 's', low ? lowText : 'aman'));
-  return g;
-}
-function meters(rows) {
-  const box = $('meters');
-  if (!rows.length) { box.replaceChildren(el('p', 'empty', 'Belum ada isian. Akan muncul setelah karyawan absen pulang.')); return; }
-  const last = rows[0];
-  const nm = emps.find((e) => e.id === last.employee_id)?.name || '';
-  const maxOf = (k) => Math.max(0, ...rows.map((r) => Number(r[k]) || 0));
-  const has = (v) => v != null && v !== '';
-  const det = has(last.detergent_pcs) ? Number(last.detergent_pcs) : null, sof = has(last.softener_pcs) ? Number(last.softener_pcs) : null;
-  const gas = has(last.gas_bar) ? Number(last.gas_bar) : null, kwh = has(last.electric_kwh) ? Number(last.electric_kwh) : null;
-  const gs = el('div', 'gauges');
-  gs.append(
-    gauge('Gas', gas, 'bar', maxOf('gas_bar'), gas != null && gas <= 1, 'segera isi'),
-    gauge('Listrik', kwh, 'kWh', maxOf('electric_kwh'), false, ''),
-    gauge('Deterjen', det, 'pcs', 300, det != null && det < 100, 'beli lagi'),
-    gauge('Softener', sof, 'pcs', 300, sof != null && sof < 100, 'beli lagi'),
-  );
-  const line = el('div', 'row2'); line.style.marginTop = '12px';
-  line.append(el('span', '', 'Dicatat'), el('b', '', `${fmtD(last.date)} ${String(last.check_out || '').slice(0, 5)} · ${nm.split(' ')[0]}`));
-  box.replaceChildren(gs, line);
+// ---------- Laba rugi (salinan tab Income Statement dari Google Sheet) ----------
+const periodLabel = (p) => (/^\d{4}-\d{2}$/.test(p) ? `${BULAN[Number(p.slice(5)) - 1]} ${p.slice(0, 4)}` : `Total ${p}`);
+
+function incomePeriods() {
+  const sel = $('isel');
+  const has = {};
+  isRows.forEach((x) => { if (x.amount != null && Number(x.amount) !== 0) has[x.period] = true; });
+  const months = Object.keys(has).filter((p) => /^\d{4}-\d{2}$/.test(p)).sort().reverse();
+  const years = Object.keys(has).filter((p) => /^\d{4}$/.test(p)).sort().reverse();
+  const list = [...months, ...years];
+  if (!list.length) { sel.replaceChildren(); sel.disabled = true; isPeriod = null; return; }
+  sel.disabled = false;
+  sel.replaceChildren(...list.map((p) => { const x = el('option', '', periodLabel(p)); x.value = p; return x; }));
+  const now = iso(new Date()).slice(0, 7);
+  if (!isPeriod || !list.includes(isPeriod)) isPeriod = list.includes(now) ? now : list[0];
+  sel.value = isPeriod;
 }
 
-function attend(rows) {
-  const box = $('attend');
-  if (!rows.length) { box.replaceChildren(el('p', 'empty', 'Belum ada absensi di periode ini.')); return; }
-  const c = {}; rows.forEach((r) => (c[r.status] = (c[r.status] || 0) + 1));
-  const late = {}; rows.filter((r) => r.status === 'telat').forEach((r) => (late[r.employee_id] = (late[r.employee_id] || 0) + 1));
-  const line = (k, v) => { const r = el('div', 'row2'); r.append(el('span', '', k), el('b', '', v)); return r; };
-  const out = [line('Hadir tepat waktu', num(c.hadir || 0)), line('Telat', num(c.telat || 0))];
-  ['izin', 'sakit', 'cuti', 'alpha'].forEach((k) => { if (c[k]) out.push(line(k[0].toUpperCase() + k.slice(1), num(c[k]))); });
-  Object.entries(late).sort((a, b) => b[1] - a[1]).slice(0, 3).forEach(([id, n]) => {
-    const nm = emps.find((e) => e.id === Number(id))?.name || 'Karyawan';
-    out.push(line(`Telat: ${nm}`, `${n}x`));
+function income() {
+  const box = $('income');
+  const rows = isRows.filter((x) => x.period === isPeriod).sort((a, b) => a.sort - b.sort);
+  if (!rows.length) {
+    box.replaceChildren(el('p', 'empty', 'Belum ada laporan laba rugi untuk outlet ini.'));
+    $('income-note').textContent = '';
+    return;
+  }
+  const t = el('table', 'is');
+  rows.forEach((x) => {
+    const label = x.line_item, a = x.amount == null ? null : Number(x.amount);
+    let cls = '';
+    if (a == null) cls = 'sec';
+    else if (/^(total|gross profit|net profit)/i.test(label)) cls = 'tot';
+    else if (/^of which/i.test(label)) cls = 'sub';
+    if (/^net profit/i.test(label)) cls += ' key';
+    const tr = el('tr', cls.trim());
+    const v = a == null ? '' : /margin/i.test(label) ? (a * 100).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + '%' : money(a);
+    const td = el('td', 'v' + (a != null && a < 0 ? ' neg' : ''), v);
+    tr.append(el('td', 'n', label), td);
+    t.append(tr);
   });
-  box.replaceChildren(...out);
-}
-
-function machines(rows) {
-  const box = $('machines');
-  if (!rows.length) { box.replaceChildren(el('p', 'empty', 'Semua mesin aman.')); return; }
-  box.replaceChildren(...rows.map((r) => {
-    const x = el('div', 'row2');
-    x.append(el('span', '', `${r.machine || 'Mesin'}${r.description ? ' – ' + r.description : ''}`), el('b', '', fmtD(r.date)));
-    return x;
-  }));
+  const wrap = el('div', 'iswrap'); wrap.append(t);
+  box.replaceChildren(wrap);
+  const upd = rows.reduce((m, x) => (x.updated_at > m ? x.updated_at : m), '');
+  const d = upd ? new Date(upd) : null;
+  $('income-note').textContent = 'Angka jadi dari tab Income Statement di Google Sheet accounting (tidak dihitung ulang). Angka dalam kurung = rugi / minus.' +
+    (d ? ` Diperbarui ${d.getDate()} ${BULAN[d.getMonth()]} ${pad(d.getHours())}:${pad(d.getMinutes())}.` : '');
 }
 
 // Tooltip untuk batang grafik (mouse dan sentuh).

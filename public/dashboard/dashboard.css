@@ -50,5 +50,20 @@ body.dash-page { --ink: #3d3d3d; --gray: #737373; --track: #ececea; background: 
 .note { font-size: 12px; color: var(--gray); font-weight: 600; margin-top: 10px !important; }
 .empty { color: var(--gray); font-weight: 700; font-size: 14px; }
 .warn { background: var(--orange); border-radius: 6px; padding: 0 6px; font-weight: 800; }
+.cardhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.sel.mini { min-width: 170px; }
+.sel.mini select { min-height: 40px; font-size: 14px; border-radius: 12px; }
+.iswrap { overflow-x: auto; }
+.is { width: 100%; border-collapse: collapse; font-size: 14px; }
+.is td { padding: 7px 6px; border-bottom: 1px dashed #d4d4d1; }
+.is td.n { font-weight: 600; }
+.is td.v { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.is td.neg { color: #c2410c; }
+.is tr.sec td { padding-top: 16px; border-bottom: 0; font-size: 12px; font-weight: 900; color: var(--gray); text-transform: uppercase; letter-spacing: .3px; }
+.is tr.sub td { color: var(--gray); font-style: italic; font-weight: 600; }
+.is tr.tot td { font-weight: 900; border-bottom: 2px solid #c9c9c6; }
+.is tr.key td { background: var(--yellow); }
+.is tr.key td:first-child { border-radius: 10px 0 0 10px; }
+.is tr.key td:last-child { border-radius: 0 10px 10px 0; }
 .tip { position: fixed; z-index: 10; pointer-events: none; background: var(--ink); color: var(--white); font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 8px; white-space: nowrap; }
 @media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpi { padding: 14px; } .kpi.hero .v { font-size: 30px; } .kpi .v { font-size: 17px; white-space: nowrap; overflow-wrap: normal; } .sel select { font-size: 15px; } .chart { height: 150px; } }
