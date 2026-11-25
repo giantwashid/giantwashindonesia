@@ -4,7 +4,9 @@
 body.dash-page { margin: 0; background: var(--bg); color: var(--ink); font-family: Manrope, system-ui, sans-serif; }
 .hidden { display: none !important; }
 a { color: var(--accent); }
-.dash { max-width: 1280px; margin: 0 auto; padding: 36px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
+/* Jarak antar kartu/tabel sama rata: 0,3 cm (permintaan owner). */
+.dash { --gap: 0.3cm; max-width: 1280px; margin: 0 auto; padding: 36px 24px 48px; display: flex; flex-direction: column; gap: var(--gap); }
+#board { display: flex; flex-direction: column; gap: var(--gap); }
 .dash p { margin: 0; }
 .head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 18px; }
 .title { display: flex; flex-direction: column; gap: 4px; }
@@ -39,10 +41,10 @@ a { color: var(--accent); }
 .kpi .d { font-size: 13px; font-weight: 700; }
 .kpi.key .k, .kpi.key .v { color: var(--accent); }
 
-.row-5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 20px; }
+.row-5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gap); }
 .span-3 { grid-column: span 3; }
 .span-2 { grid-column: span 2; }
-.row-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.row-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); }
 
 /* Tren bulanan dengan angka */
 .trend { display: flex; align-items: flex-end; gap: 14px; height: 260px; }
