@@ -65,7 +65,9 @@ async function init() {
   const { data: emp } = await sb.from('employees').select('*').ilike('email', session.user.email).eq('active', true).maybeSingle();
   me = emp;
   const role = emp ? (emp.position || '') : '';
-  canEdit = /owner|pemilik/i.test(role);
+  // Manager yang punya outlet (mis. pengelola Kampoeng) = akses seperti pemilik, tapi hanya outletnya (dikunci juga di database).
+  const outletManager = !!(emp && emp.role === 'manager' && emp.outlet_id);
+  canEdit = /owner|pemilik/i.test(role) || (emp && emp.role === 'owner') || outletManager;
   canFix = canEdit || /accounting|akuntan/i.test(role);
   const isSpv = /supervisor|spv/i.test(role);
   if (!canEdit && !isSpv && !/accounting|akuntan/i.test(role)) {
@@ -81,7 +83,8 @@ async function init() {
   outlets = o || [];
   const ot = $('#otabs');
   // Supervisor / accounting yang punya outlet hanya bisa melihat outlet itu.
-  const lockOutlet = !canEdit && me && me.outlet_id ? me.outlet_id : null;
+  const lockOutlet = me && me.outlet_id && (me.role !== 'owner') && (!canEdit || outletManager) ? me.outlet_id : null;
+  if (!(me && me.role === 'owner')) document.querySelector('#tabs [data-tab="contacts"]')?.remove(); // pesan masuk website: hanya owner
   const shown = lockOutlet ? outlets.filter((x) => x.id === lockOutlet) : outlets;
   ot.innerHTML = shown.map((x) => `<button data-outlet="${x.id}">${esc(x.name)}</button>`).join('') + (lockOutlet ? '' : '<button data-outlet="">Semua outlet</button>');
   let saved = null;

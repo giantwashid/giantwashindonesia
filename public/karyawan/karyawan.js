@@ -36,7 +36,7 @@ async function load(email) {
 
   const isAdmin = /owner|pemilik|accounting|akuntan|supervisor|spv/i.test(data.position || '');
   const isBoss = isAdmin || ['owner', 'manager'].includes(data.role);
-  $('owner-tile').classList.toggle('hidden', !isAdmin);
+  $('owner-tile').classList.toggle('hidden', !(isAdmin || ['owner', 'manager'].includes(data.role)));
   document.querySelectorAll('.boss').forEach((t) => t.classList.toggle('hidden', !isBoss));
 
   const { data: od } = await sb.from('outlets').select('*').eq('active', true).order('id');
