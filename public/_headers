@@ -1,0 +1,6 @@
+# Cloudflare Pages: browser selalu mengecek ulang file gaya dan skrip,
+# supaya perubahan tampilan langsung terlihat (tanpa menunggu cache 4 jam).
+/*.css
+  Cache-Control: public, max-age=0, must-revalidate
+/*.js
+  Cache-Control: public, max-age=0, must-revalidate
